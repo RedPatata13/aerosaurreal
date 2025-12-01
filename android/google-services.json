@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "578103797264",
+    "project_id": "aerosaur-2nd-sem",
+    "storage_bucket": "aerosaur-2nd-sem.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:578103797264:android:b08cf1329292321b190c95",
+        "android_client_info": {
+          "package_name": "com.example.aerosaur_2nd_sem"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "578103797264-glgiio4vealqjnfh8kf7epd5fim2u29u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.aerosaur_2nd_sem",
+            "certificate_hash": "8fbf928309d94da210ff329b4d3e79b988c1f077"
+          }
+        },
+        {
+          "client_id": "578103797264-43hv8au2eral679jaoi9nobc2gv0pkpj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_TExzUEsbnAS7Q3LiPGHoEVskrb12stU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "578103797264-43hv8au2eral679jaoi9nobc2gv0pkpj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "578103797264",
+    "project_id": "aerosaur-2nd-sem",
+    "storage_bucket": "aerosaur-2nd-sem.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:578103797264:android:b08cf1329292321b190c95",
+        "android_client_info": {
+          "package_name": "com.example.aerosaur_2nd_sem"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_TExzUEsbnAS7Q3LiPGHoEVskrb12stU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
