@@ -11,31 +11,31 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  // Use a nullable Future to handle the case where the user might log out 
+  // Use a nullable Future to handle the case where the user might log out
   // immediately or the Future can't be initialized (though less likely here).
   late Future<DocumentSnapshot<Map<String, dynamic>>> _userDocFuture;
 
   @override
   void initState() {
     super.initState();
-    
+
     final currentUser = FirebaseAuth.instance.currentUser;
 
     // Check 1: Ensure the user is authenticated before proceeding.
     if (currentUser == null) {
       print('Current user is not authenticated. Redirecting to login.');
       _handleLogoutAndRedirect();
-      return; 
+      return;
     }
-    
-    final uid = currentUser.uid; 
-    
+
+    final uid = currentUser.uid;
+
     _userDocFuture = FirebaseFirestore.instance
         .collection('users')
         .doc(uid) // Use UID here
         .get();
   }
-  
+
   // Refactored logout function to handle the sign out and navigation safely.
   void _handleLogoutAndRedirect() async {
     // 1. Log out the user
@@ -45,11 +45,11 @@ class _HomePageState extends State<HomePage> {
     // await GoogleSignIn.instance.signOut();
     // 2. Safely redirect to /login
     // Must check if the widget is still mounted before navigating.
-    if (!mounted) return; 
+    if (!mounted) return;
 
     // Use pushReplacementNamed to prevent the user from navigating back
     Navigator.of(context).pushReplacementNamed('/login');
-  } 
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +66,7 @@ class _HomePageState extends State<HomePage> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _handleLogoutAndRedirect();
           });
-          
+
           return Scaffold(
             body: Center(
               child: Padding(
@@ -84,7 +84,7 @@ class _HomePageState extends State<HomePage> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _handleLogoutAndRedirect();
           });
-          
+
           return const Scaffold(
             body: Center(
               child: Padding(
@@ -98,9 +98,8 @@ class _HomePageState extends State<HomePage> {
           );
         }
 
-
         final data = snapshot.data!.data()!;
-        final username = data['username'] ?? 'Unknown User'; 
+        final username = data['username'] ?? 'Unknown User';
 
         return Scaffold(
           appBar: AppBar(
@@ -109,15 +108,11 @@ class _HomePageState extends State<HomePage> {
               IconButton(
                 icon: const Icon(Icons.logout),
                 onPressed: _handleLogoutAndRedirect,
-              
               ),
-              
             ],
             automaticallyImplyLeading: false,
           ),
-          body: Center(
-            child: Text('Welcome, $username!'),
-          ),
+          body: Center(child: Text('Welcome, $username!')),
           bottomNavigationBar: NavigationBar(
             selectedIndex: 0,
             destinations: const [

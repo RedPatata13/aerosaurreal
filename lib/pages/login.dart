@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 const List<String> scopes = <String>[
   // 'https://www.googleapis.com/auth/contacts.readonly',
@@ -12,7 +13,7 @@ const List<String> scopes = <String>[
   'profile',
   'openid',
   'https://www.googleapis.com/auth/userinfo.email',
-  'https://www.googleapis.com/auth/userinfo.profile'  
+  'https://www.googleapis.com/auth/userinfo.profile',
 ];
 
 class LoginPage extends StatefulWidget {
@@ -72,211 +73,237 @@ class _LoginPageState extends State<LoginPage> {
       print('not mounted');
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return (
-      Scaffold(
-        body: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Avatar / Logo
-                  // const RoundedImage(),
-                  const SizedBox(height: 20),
+    return (Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Image.asset(
+                  'images/logo.png',
+                  height: 70,
+                  width: 70,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 10),
 
-                  // Title
-                  Text(
-                    'AEROSAUR',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.5,
-                    ),
+                // Title
+                Text(
+                  'AEROSAUR',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
                   ),
-                  const SizedBox(height: 5),
-                  Text(
-                    'Clean Air, Smart Control',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[600],
-                    ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Clean Air, Smart Control',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
                   ),
-                  const SizedBox(height: 25),
+                ),
+                const SizedBox(height: 25),
 
-                  // LOGIN HEADER
-                  Text(
-                    'LOGIN',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                // LOGIN HEADER
+                Text(
+                  'LOGIN',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(height: 25),
+                ),
+                const SizedBox(height: 25),
 
-                  // Email field
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Enter Email',
-                      style: theme.textTheme.bodySmall,
+                // Email field
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Enter Email'),
+                ),
+                const SizedBox(height: 5),
+                TextField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your email',
+                    hintStyle: const TextStyle(color: Colors.black45),
+                    filled: true,
+                    fillColor: const Color(0xD9D9D9D9),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
                     ),
                   ),
-                  const SizedBox(height: 5),
-                  TextField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      hintText: 'Enter your email',
-                      filled: true,
-                      fillColor: Colors.grey[200],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
+                ),
+                const SizedBox(height: 20),
+
+                // Password field
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Enter Password'),
+                ),
+                const SizedBox(height: 5),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    hintText: 'Enter your password',
+                    hintStyle: const TextStyle(color: Colors.black45),
+                    filled: true,
+                    fillColor: const Color(0xD9D9D9D9),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                       ),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
-                  const SizedBox(height: 15),
+                ),
+                const SizedBox(height: 10),
 
-                  // Password field
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Enter Password',
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      hintText: 'Enter your password',
-                      filled: true,
-                      fillColor: Colors.grey[200],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () =>
-                            setState(() => _obscurePassword = !_obscurePassword),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Remember me / Forgot password
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Checkbox(
+                // Remember me / Forgot password
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Theme(
+                          data: Theme.of(context).copyWith(
+                            checkboxTheme: CheckboxThemeData(
+                              fillColor:
+                                  MaterialStateProperty.resolveWith<Color>((
+                                    Set<MaterialState> states,
+                                  ) {
+                                    if (states.contains(
+                                      MaterialState.selected,
+                                    )) {
+                                      return const Color(0xFF1B263B);
+                                    }
+                                    return const Color(0xD9D9D9D9);
+                                  }),
+                              side: MaterialStateBorderSide.resolveWith((
+                                Set<MaterialState> states,
+                              ) {
+                                return BorderSide.none;
+                              }),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                          child: Checkbox(
                             value: _rememberMe,
                             onChanged: (v) =>
                                 setState(() => _rememberMe = v ?? false),
                           ),
-                          const Text('Remember Me'),
-                        ],
-                      ),
-                      TextButton(
-                        onPressed: () { _forgotPassword(); },
-                        child: const Text(
-                          'Forgot Password?',
-                          style: TextStyle(color: Colors.grey),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
-
-                  // Login button
-                  SizedBox(
-                    width: 100,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black87,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: _login,
-                      child: const Text('Login'),
+                        const Text('Remember Me'),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 15),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: _forgotPassword,
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 25),
 
-                  // Sign-up link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Don't have an account? "),
-                      GestureDetector(
-                        onTap: () {
-                          // print('tapped');
-                          Navigator.of(context).pushReplacementNamed('/signup');
-                        },
-                        child: const Text(
-                          'Sign up',
-                          style: TextStyle(
-                            color: Colors.blueAccent,
-                            fontWeight: FontWeight.w600,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Left: Create account link
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.of(context).pushReplacementNamed('/signup');
+                      },
+                      child: const Text(
+                        'Create an account',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontWeight: FontWeight.normal,
+                        ),
+                      ),
+                    ),
+
+                    // Right: Login button
+                    SizedBox(
+                      width: 120,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1B263B),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
+                        onPressed: _login,
+                        child: const Text('Login'),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 25),
-
-                  
-                  Row(
-                    children: const [
-                      Expanded(child: Divider(thickness: 1)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text('Or login with'),
-                      ),
-                      Expanded(child: Divider(thickness: 1)),
-                    ],
-                  ),
-                  const SizedBox(height: 25),
-
-                  // gugel
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black87,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      icon: Image.asset(
-                        'images/google_logo.png',
-                        height: 20,
-                      ),
-                      onPressed: () {
-                        _handleSignIn();
-                      },
-                      label: const Text('Google'),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 25),
+
+                Row(
+                  children: const [
+                    Expanded(child: Divider(thickness: 1)),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 10),
+                      child: Text('Or login with'),
+                    ),
+                    Expanded(child: Divider(thickness: 1)),
+                  ],
+                ),
+                const SizedBox(height: 30),
+
+                // gugel
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1B263B),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: Image.asset('images/google_logo.png', height: 20),
+                    onPressed: () {
+                      _handleSignIn();
+                    },
+                    label: const Text('Google'),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
-      )
-    );
+      ),
+    ));
   }
 
   Future<void> _login() async {
@@ -288,40 +315,43 @@ class _LoginPageState extends State<LoginPage> {
       print('Login successful');
       _navigateToApp();
     } catch (e) {
-      _showSnackbar('Invalid credentials. Please check email and password again', Colors.red);
+      _showSnackbar(
+        'Invalid credentials. Please check email and password again',
+        Colors.red,
+      );
       print('Login failed: $e');
     }
   }
-  void _navigateToApp(){
-      Navigator.of(context).pushNamed('/app');
+
+  void _navigateToApp() {
+    Navigator.of(context).pushNamed('/app');
   }
+
   Future<void> _handleSignIn() async {
-    try{
+    try {
       final GoogleSignIn signin = GoogleSignIn.instance;
-      await signin.initialize(
-        clientId: dotenv.env['CLIENT_ID'],
-        serverClientId: dotenv.env['SERVER_CLIENT_ID']
-      ).then((_,
-      ){
-          signin.authenticationEvents
-            .listen(_handleAuthenticationEvent)
-            .onError(_handleAuthenticationError);
-          print('Attemping to sign in...');
-          _showSnackbar('Attempting to Sign in to Google...', Colors.orange);
-          signin.attemptLightweightAuthentication();
-          
-      });
+      await signin
+          .initialize(
+            clientId: dotenv.env['CLIENT_ID'],
+            serverClientId: dotenv.env['SERVER_CLIENT_ID'],
+          )
+          .then((_) {
+            signin.authenticationEvents
+                .listen(_handleAuthenticationEvent)
+                .onError(_handleAuthenticationError);
+            print('Attemping to sign in...');
+            _showSnackbar('Attempting to Sign in to Google...', Colors.orange);
+            signin.attemptLightweightAuthentication();
+          });
       await signin.signOut();
       await signin.disconnect();
       setState(() {
         _initialized = true;
       });
-      
-
 
       // signIn.auth
       print('End of block in Google Sign In');
-    } catch (e){
+    } catch (e) {
       print('Error while logging on to Google: $e');
     }
   }
@@ -329,8 +359,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handleAuthenticationEvent(
     GoogleSignInAuthenticationEvent event,
   ) async {
-    final GoogleSignInAccount? user =
-    switch(event){
+    final GoogleSignInAccount? user = switch (event) {
       GoogleSignInAuthenticationEventSignIn() => event.user,
       GoogleSignInAuthenticationEventSignOut() => null,
     };
@@ -344,33 +373,36 @@ class _LoginPageState extends State<LoginPage> {
       _isAuthorized = authorization != null;
       // _errorMessage = '';
     });
-    if(user != null && authorization != null){
+    if (user != null && authorization != null) {
       final GoogleSignInAuthentication googleAuth = user.authentication;
-      
+
       final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: authorization.accessToken,  
+        accessToken: authorization.accessToken,
         idToken: googleAuth.idToken,
       );
-    
-      try{
-        final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+
+      try {
+        final UserCredential userCredential = await FirebaseAuth.instance
+            .signInWithCredential(credential);
 
         final String? uid = userCredential.user?.uid;
         final String? email = user.email;
         final String? displayName = user.displayName;
 
-        if(uid != null){
-          final DocumentReference userDocRef = FirebaseFirestore.instance.collection('users').doc(uid);
+        if (uid != null) {
+          final DocumentReference userDocRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid);
 
           final DocumentSnapshot doc = await userDocRef.get();
 
-          if(!doc.exists){
+          if (!doc.exists) {
             await userDocRef.set({
               'uid': uid,
               'email': email,
-              'displayName' : displayName,
-              'username' : displayName,
-              'createdAt' : FieldValue.serverTimestamp(),
+              'displayName': displayName,
+              'username': displayName,
+              'createdAt': FieldValue.serverTimestamp(),
             });
             print('New user document created in Firestore for $uid');
           } else {
@@ -379,12 +411,11 @@ class _LoginPageState extends State<LoginPage> {
         }
 
         _navigateToApp();
-
-      } catch (e){
+      } catch (e) {
         print("Error signing in or writing to Firestore");
         print(e);
       }
-    } 
+    }
   }
 
   Future<void> _handleAuthenticationError(Object e) async {
@@ -395,12 +426,9 @@ class _LoginPageState extends State<LoginPage> {
       //     e is GoogleSignInException
       //         ? _errorMessageFromSignInException(e)
       //         : 'Unknown error: $e';
-      if(e is GoogleSignInException){
+      if (e is GoogleSignInException) {
         _showSnackbar('Google Sign In failed', Colors.red);
       }
     });
   }
-
-  
 }
-
