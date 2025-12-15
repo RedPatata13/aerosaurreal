@@ -25,7 +25,7 @@ class _PasswordInputFieldState extends State<PasswordInputField> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(widget.label),
-        const SizedBox(height: 8),
+        const SizedBox(height: 5),
         TextFormField(
           controller: widget.controller,
           obscureText: _obscureText,
@@ -33,8 +33,11 @@ class _PasswordInputFieldState extends State<PasswordInputField> {
             hintText: widget.hintText,
             hintStyle: const TextStyle(color: Colors.black45),
             filled: true,
-            fillColor: const Color(0xFFF2F2F2),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            fillColor: const Color(0xd9d9d9d9),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,

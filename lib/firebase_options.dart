@@ -59,4 +59,5 @@ class DefaultFirebaseOptions {
     projectId: 'aerosaur-2nd-sem',
     storageBucket: 'aerosaur-2nd-sem.firebasestorage.app',
   );
+
 }

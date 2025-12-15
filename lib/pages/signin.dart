@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/signup.dart';
 import '../components/input_field.dart';
 import '../components/password_input_field.dart';
 import '../components/rounded_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -26,12 +27,12 @@ class _SignUpPageState extends State<SignUpPage> {
   late GoogleSignInAccount? _currentUser;
   bool _isLoading = false;
   final List<String> scopes = <String>[
-  // 'https://www.googleapis.com/auth/contacts.readonly',
+    // 'https://www.googleapis.com/auth/contacts.readonly',
     'email',
     'profile',
     'openid',
     'https://www.googleapis.com/auth/userinfo.email',
-    'https://www.googleapis.com/auth/userinfo.profile'  
+    'https://www.googleapis.com/auth/userinfo.profile',
   ];
 
   @override
@@ -82,20 +83,18 @@ class _SignUpPageState extends State<SignUpPage> {
 
     try {
       // 4. Call the Sign Up Service (relies on throwing exceptions on failure)
-      await signUpUser(
-        email: email,
-        password: password,
-        username: username,
-      );
+      await signUpUser(email: email, password: password, username: username);
 
       // Check mounted state after the await, before using Navigator
       if (!mounted) return;
-      
-      // Success: Show message and navigate
-      _showSnackbar("Sign up successful! Redirecting to Login Page...", Colors.green);
-      // Navigate to the main application route
-      Navigator.of(context).pushReplacementNamed('/login'); 
 
+      // Success: Show message and navigate
+      _showSnackbar(
+        "Sign up successful! Redirecting to Login Page...",
+        Colors.green,
+      );
+      // Navigate to the main application route
+      Navigator.of(context).pushReplacementNamed('/login');
     } on FirebaseAuthException catch (e) {
       // 5. Handle specific Firebase Authentication errors
       String message;
@@ -117,7 +116,10 @@ class _SignUpPageState extends State<SignUpPage> {
       // 6. Handle other general errors
       // Check mounted state before showing Snackbar
       if (!mounted) return;
-      _showSnackbar("An unexpected error occurred during sign up: ${e.toString()}", Colors.red);
+      _showSnackbar(
+        "An unexpected error occurred during sign up: ${e.toString()}",
+        Colors.red,
+      );
     } finally {
       // 7. Stop Loading State
       if (mounted) {
@@ -130,27 +132,30 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Future<void> _handleGoogleSignIn() async {
     _showSnackbar('Initializing Google Sign In. Please wait...', Colors.green);
-    try{
+    try {
       final GoogleSignIn signin = GoogleSignIn.instance;
-      await signin.initialize(
-        clientId: '315539143951-o953euhck7eiqhm9775f7mg0pm0omlr8.apps.googleusercontent.com',
-        serverClientId: '315539143951-l6l6nq15fm45qbdq22hqce0pv4rfu55i.apps.googleusercontent.com'
-      ).then((_,
-      ){
-          signin.authenticationEvents
-            .listen(_handleAuthenticationEvent)
-            .onError(_handleAuthenticationError);
+      await signin
+          .initialize(
+            clientId:
+                '315539143951-o953euhck7eiqhm9775f7mg0pm0omlr8.apps.googleusercontent.com',
+            serverClientId:
+                '315539143951-l6l6nq15fm45qbdq22hqce0pv4rfu55i.apps.googleusercontent.com',
+          )
+          .then((_) {
+            signin.authenticationEvents
+                .listen(_handleAuthenticationEvent)
+                .onError(_handleAuthenticationError);
 
-          signin.attemptLightweightAuthentication();
-      });
+            signin.attemptLightweightAuthentication();
+          });
       // await signin.signOut();
       // await signin.disconnect();
       setState(() {
         _initialized = true;
       });
-      
+
       // final GoogleSignInAccount? googleUser = await signin.signIn();
-    } catch (e){
+    } catch (e) {
       _showSnackbar('Error logging in using Google', Colors.red);
       print(e);
     }
@@ -159,8 +164,7 @@ class _SignUpPageState extends State<SignUpPage> {
   Future<void> _handleAuthenticationEvent(
     GoogleSignInAuthenticationEvent event,
   ) async {
-    final GoogleSignInAccount? user =
-    switch(event){
+    final GoogleSignInAccount? user = switch (event) {
       GoogleSignInAuthenticationEventSignIn() => event.user,
       GoogleSignInAuthenticationEventSignOut() => null,
     };
@@ -174,33 +178,36 @@ class _SignUpPageState extends State<SignUpPage> {
       _isAuthorized = authorization != null;
       // _errorMessage = '';
     });
-    if(user != null && authorization != null){
+    if (user != null && authorization != null) {
       final GoogleSignInAuthentication googleAuth = user.authentication;
-      
+
       final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: authorization.accessToken,  
+        accessToken: authorization.accessToken,
         idToken: googleAuth.idToken,
       );
-    
-      try{
-        final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+
+      try {
+        final UserCredential userCredential = await FirebaseAuth.instance
+            .signInWithCredential(credential);
 
         final String? uid = userCredential.user?.uid;
         final String? email = user.email;
         final String? displayName = user.displayName;
 
-        if(uid != null){
-          final DocumentReference userDocRef = FirebaseFirestore.instance.collection('users').doc(uid);
+        if (uid != null) {
+          final DocumentReference userDocRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(uid);
 
           final DocumentSnapshot doc = await userDocRef.get();
 
-          if(!doc.exists){
+          if (!doc.exists) {
             await userDocRef.set({
               'uid': uid,
               'email': email,
-              'displayName' : displayName,
-              'username' : displayName,
-              'createdAt' : FieldValue.serverTimestamp(),
+              'displayName': displayName,
+              'username': displayName,
+              'createdAt': FieldValue.serverTimestamp(),
             });
             print('New user document created in Firestore for $uid');
           } else {
@@ -209,12 +216,11 @@ class _SignUpPageState extends State<SignUpPage> {
         }
 
         _navigateToLogin();
-
-      } catch (e){
+      } catch (e) {
         print("Error signing in or writing to Firestore");
         print(e);
       }
-    } 
+    }
   }
 
   Future<void> _handleAuthenticationError(Object e) async {
@@ -227,47 +233,49 @@ class _SignUpPageState extends State<SignUpPage> {
       //         : 'Unknown error: $e';
     });
   }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 35),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo
-              // const RoundedImage(),
-              const SizedBox(height: 24),
-
-              const Text(
-                "AEROSAUR",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1C2A39),
-                ),
+              Image.asset(
+                'images/logo.png',
+                height: 70,
+                width: 70,
+                fit: BoxFit.contain,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 10),
+
+              // Title
               Text(
-                "Clean Air, Smart Control",
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 48),
-
-              const Text(
-                "SIGN UP",
-                style: TextStyle(
+                'AEROSAUR',
+                style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: Colors.black87,
+                  letterSpacing: 1.5,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 5),
+              Text(
+                'Clean Air, Smart Control',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 25),
+
+              Text(
+                'SIGN UP',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 25),
 
               Form(
                 key: _formKey,
@@ -277,6 +285,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       label: "Username",
                       hintText: "Enter your Username",
                       controller: _usernameController,
+
                       // validator: (value) => value == null || value.isEmpty ? 'Username is required' : null,
                     ),
                     const SizedBox(height: 20),
@@ -309,55 +318,60 @@ class _SignUpPageState extends State<SignUpPage> {
                       // validator: (value) => value == null || value.isEmpty ? 'Confirmation is required' : null,
                     ),
                     const SizedBox(height: 32),
-
-                    SizedBox(
-                      width: 150,
-                      height: 50,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black87,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: _isLoading ? null : _signUp,
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text(
-                                "Sign up",
-                                style: TextStyle(fontSize: 16),
-                              ),
-                      ),
-                    ),
                   ],
                 ),
               ),
+              const SizedBox(height: 5),
 
-              const SizedBox(height: 24),
-
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pushNamed('/login');
-                },
-                child: const Text(
-                  "Already have an account? Login",
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.black87,
-                    decoration: TextDecoration.underline,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Left: Login text link
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pushNamed('/login');
+                    },
+                    child: const Text(
+                      "Login Account",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.normal,
+                      ),
+                    ),
                   ),
-                ),
+
+                  // Right: Sign Up button
+                  SizedBox(
+                    width: 120,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1B263B),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: _isLoading ? null : _signUp,
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Sign up',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                    ),
+                  ),
+                ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
               Row(
                 children: const [
                   Expanded(child: Divider(thickness: 1)),
@@ -368,35 +382,32 @@ class _SignUpPageState extends State<SignUpPage> {
                   Expanded(child: Divider(thickness: 1)),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 30),
               SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black87,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      icon: Image.asset(
-                        'images/google_logo.png',
-                        height: 20,
-                      ),
-                      onPressed: () {
-                        _handleGoogleSignIn();
-                      },
-                      label: const Text('Google'),
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1B263B),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
+                  icon: Image.asset('images/google_logo.png', height: 20),
+                  onPressed: () {
+                    _handleGoogleSignIn();
+                  },
+                  label: const Text('Google'),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
-  
+
   void _navigateToLogin() {
     _showSnackbar('Success! Redirecting to Login...', Colors.green);
     Navigator.of(context).pushNamed('/login');
