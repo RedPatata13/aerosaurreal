@@ -263,9 +263,7 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 5),
               Text(
                 'Clean Air, Smart Control',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
+                style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 25),
 
@@ -331,12 +329,9 @@ class _SignUpPageState extends State<SignUpPage> {
                     onPressed: () {
                       Navigator.of(context).pushNamed('/login');
                     },
-                    child: const Text(
+                    child: Text(
                       "Login Account",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.normal,
-                      ),
+                      style: theme.textTheme.bodyMedium,
                     ),
                   ),
 
@@ -345,8 +340,6 @@ class _SignUpPageState extends State<SignUpPage> {
                     width: 120,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1B263B),
-                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
@@ -357,15 +350,9 @@ class _SignUpPageState extends State<SignUpPage> {
                           ? const SizedBox(
                               height: 24,
                               width: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text(
-                              'Sign up',
-                              style: TextStyle(fontSize: 16),
-                            ),
+                          : const Text('Sign up'),
                     ),
                   ),
                 ],
@@ -387,8 +374,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1B263B),
-                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),

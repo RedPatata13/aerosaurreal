@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -32,6 +31,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _initialized = false;
   late GoogleSignInAccount? _currentUser;
 
+  //forgot pass
   Future<void> _forgotPassword() async {
     final email = _emailController.text.trim();
     print('Pressed');
@@ -59,6 +59,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  //ui helpers
   void _showSnackbar(String message, Color color) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -74,9 +75,12 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  //ui
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return (Scaffold(
       body: SafeArea(
         child: Center(
@@ -104,9 +108,7 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 5),
                 Text(
                   'Clean Air, Smart Control',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                  style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 25),
 
@@ -129,9 +131,6 @@ class _LoginPageState extends State<LoginPage> {
                   controller: _emailController,
                   decoration: InputDecoration(
                     hintText: 'Enter your email',
-                    hintStyle: const TextStyle(color: Colors.black45),
-                    filled: true,
-                    fillColor: const Color(0xD9D9D9D9),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide.none,
@@ -151,9 +150,6 @@ class _LoginPageState extends State<LoginPage> {
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
                     hintText: 'Enter your password',
-                    hintStyle: const TextStyle(color: Colors.black45),
-                    filled: true,
-                    fillColor: const Color(0xD9D9D9D9),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: BorderSide.none,
@@ -187,15 +183,18 @@ class _LoginPageState extends State<LoginPage> {
                                     if (states.contains(
                                       MaterialState.selected,
                                     )) {
-                                      return const Color(0xFF1B263B);
+                                      return Theme.of(
+                                        context,
+                                      ).colorScheme.primary;
                                     }
-                                    return const Color(0xD9D9D9D9);
+                                    return Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Color(0xFF414141)
+                                        : Color(0xFFD9D9D9);
                                   }),
-                              side: MaterialStateBorderSide.resolveWith((
-                                Set<MaterialState> states,
-                              ) {
-                                return BorderSide.none;
-                              }),
+                              side: MaterialStateBorderSide.resolveWith(
+                                (Set<MaterialState> states) => BorderSide.none,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -214,46 +213,29 @@ class _LoginPageState extends State<LoginPage> {
                       ],
                     ),
                     TextButton(
-                      style: TextButton.styleFrom(
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
                       onPressed: _forgotPassword,
-                      child: const Text(
-                        'Forgot Password?',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontWeight: FontWeight.normal,
-                        ),
-                      ),
+                      child: const Text('Forgot password?'),
                     ),
                   ],
                 ),
                 const SizedBox(height: 25),
 
+                //create account / login
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Left: Create account link
                     GestureDetector(
-                      onTap: () {
-                        Navigator.of(context).pushReplacementNamed('/signup');
-                      },
-                      child: const Text(
+                      onTap: () =>
+                          Navigator.pushReplacementNamed(context, '/signup'),
+                      child: Text(
                         'Create an account',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.normal,
-                        ),
+                        style: theme.textTheme.bodyMedium,
                       ),
                     ),
-
-                    // Right: Login button
                     SizedBox(
                       width: 120,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1B263B),
-                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -269,12 +251,12 @@ class _LoginPageState extends State<LoginPage> {
 
                 Row(
                   children: const [
-                    Expanded(child: Divider(thickness: 1)),
+                    Expanded(child: Divider()),
                     Padding(
                       padding: EdgeInsets.symmetric(horizontal: 10),
                       child: Text('Or login with'),
                     ),
-                    Expanded(child: Divider(thickness: 1)),
+                    Expanded(child: Divider()),
                   ],
                 ),
                 const SizedBox(height: 30),
@@ -284,8 +266,6 @@ class _LoginPageState extends State<LoginPage> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1B263B),
-                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -306,6 +286,7 @@ class _LoginPageState extends State<LoginPage> {
     ));
   }
 
+  //auth logic
   Future<void> _login() async {
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -327,6 +308,7 @@ class _LoginPageState extends State<LoginPage> {
     Navigator.of(context).pushNamed('/app');
   }
 
+  //google sign in
   Future<void> _handleSignIn() async {
     try {
       final GoogleSignIn signin = GoogleSignIn.instance;
@@ -349,7 +331,6 @@ class _LoginPageState extends State<LoginPage> {
         _initialized = true;
       });
 
-      // signIn.auth
       print('End of block in Google Sign In');
     } catch (e) {
       print('Error while logging on to Google: $e');
