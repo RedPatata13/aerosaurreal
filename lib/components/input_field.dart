@@ -26,9 +26,6 @@ class InputField extends StatelessWidget {
           keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(color: Colors.black45),
-            filled: true,
-            fillColor: const Color(0xD9D9D9D9),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
