@@ -9,6 +9,7 @@ import 'insights.dart';
 import 'device_management.dart';
 import '../models/device.dart';
 import '../platform/system_settings.dart';
+import '../components/navbar.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -46,8 +47,10 @@ class _HomePageState extends State<HomePage> {
 
     final uid = currentUser.uid;
 
-    _userDocStream =
-        FirebaseFirestore.instance.collection('users').doc(uid).snapshots();
+    _userDocStream = FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .snapshots();
   }
 
   // Refactored logout function to handle the sign out and navigation safely.
@@ -155,8 +158,9 @@ class _HomePageState extends State<HomePage> {
         final safeSelectedIndex = devicesForUi.isEmpty
             ? 0
             : _selectedDeviceIndex.clamp(0, devicesForUi.length - 1);
-        final selectedDevice =
-            devicesForUi.isEmpty ? null : devicesForUi[safeSelectedIndex];
+        final selectedDevice = devicesForUi.isEmpty
+            ? null
+            : devicesForUi[safeSelectedIndex];
 
         return Scaffold(
           body: SafeArea(
@@ -212,8 +216,10 @@ class _HomePageState extends State<HomePage> {
                                         ? devicesForUi
                                         : _deviceState;
                                     _deviceState = current
-                                        .map((d) =>
-                                            d.id == updated.id ? updated : d)
+                                        .map(
+                                          (d) =>
+                                              d.id == updated.id ? updated : d,
+                                        )
                                         .toList(growable: false);
                                   });
                                 },
@@ -231,86 +237,22 @@ class _HomePageState extends State<HomePage> {
                           ],
                         )
                       : _NoDeviceContent(
-                          onRegisterDevice: () => _showRegisterDeviceDialog(uid),
+                          onRegisterDevice: () =>
+                              _showRegisterDeviceDialog(uid),
                           onLogout: _handleLogoutAndRedirect,
                         ),
                 ),
               ],
             ),
           ),
-          bottomNavigationBar: isDark
-              ? NavigationBarTheme(
-                  data: NavigationBarThemeData(
-                    backgroundColor: const Color(0xFF415A77),
-                    indicatorColor: Colors.transparent,
-                    iconTheme: WidgetStateProperty.resolveWith((states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return const IconThemeData(color: Colors.white);
-                      }
-                      return const IconThemeData(color: Color(0xFF9CA3AF));
-                    }),
-                    labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                      final selected = states.contains(WidgetState.selected);
-                      return TextStyle(
-                        color: selected
-                            ? Colors.white
-                            : const Color(0xFF9CA3AF),
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w500,
-                      );
-                    }),
-                  ),
-                  child: NavigationBar(
-                    selectedIndex: _selectedIndex,
-                    onDestinationSelected: (value) {
-                      setState(() {
-                        _selectedIndex = value;
-                      });
-                    },
-                    destinations: const [
-                      NavigationDestination(
-                        icon: Icon(Icons.dashboard_outlined),
-                        selectedIcon: Icon(Icons.dashboard),
-                        label: 'Dashboard',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.monitor_heart_outlined),
-                        selectedIcon: Icon(Icons.monitor_heart),
-                        label: 'Monitoring',
-                      ),
-                      NavigationDestination(
-                        icon: Icon(Icons.insights_outlined),
-                        selectedIcon: Icon(Icons.insights),
-                        label: 'Insights',
-                      ),
-                    ],
-                  ),
-                )
-              : NavigationBar(
-                  selectedIndex: _selectedIndex,
-                  onDestinationSelected: (value) {
-                    setState(() {
-                      _selectedIndex = value;
-                    });
-                  },
-                  destinations: const [
-                    NavigationDestination(
-                      icon: Icon(Icons.dashboard_outlined),
-                      selectedIcon: Icon(Icons.dashboard),
-                      label: 'Dashboard',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.monitor_heart_outlined),
-                      selectedIcon: Icon(Icons.monitor_heart),
-                      label: 'Monitoring',
-                    ),
-                    NavigationDestination(
-                      icon: Icon(Icons.insights_outlined),
-                      selectedIcon: Icon(Icons.insights),
-                      label: 'Insights',
-                    ),
-                  ],
-                ),
+          bottomNavigationBar: CustomBottomNav(
+            currentIndex: _selectedIndex,
+            onTap: (value) {
+              setState(() {
+                _selectedIndex = value;
+              });
+            },
+          ),
         );
       },
     );
@@ -334,9 +276,11 @@ class _HomeHeader extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     const navy = Color(0xFF1B263B);
     const slate = Color(0xFF415A77);
-    final titleColor =
-        isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
-    final bodySmall = theme.textTheme.bodySmall ?? const TextStyle(fontSize: 12);
+    final titleColor = isDark
+        ? const Color(0xFFF3F4F6)
+        : const Color(0xFF111827);
+    final bodySmall =
+        theme.textTheme.bodySmall ?? const TextStyle(fontSize: 12);
     final titleMedium =
         theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
 
@@ -442,14 +386,18 @@ class _NoDeviceContent extends StatelessWidget {
     const slate = Color(0xFF415A77);
     const danger = Color(0xFFC53A3A);
     final cardBg = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final cardBorder =
-        isDark ? const Color(0xFF2B2F36) : const Color(0xFFD1D5DB);
-    final titleColor =
-        isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
-    final bodyColor =
-        isDark ? const Color(0xFFB9C0CB) : const Color(0xFF4B5563);
+    final cardBorder = isDark
+        ? const Color(0xFF2B2F36)
+        : const Color(0xFFD1D5DB);
+    final titleColor = isDark
+        ? const Color(0xFFF3F4F6)
+        : const Color(0xFF111827);
+    final bodyColor = isDark
+        ? const Color(0xFFB9C0CB)
+        : const Color(0xFF4B5563);
     final primaryButton = isDark ? slate : navy;
-    final bodyMedium = theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
+    final bodyMedium =
+        theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
     final titleMedium =
         theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
 
@@ -489,10 +437,7 @@ class _NoDeviceContent extends StatelessWidget {
                   Text(
                     "It appears you don't have any devices registered. Register your device now!",
                     textAlign: TextAlign.center,
-                    style: bodyMedium.copyWith(
-                      color: bodyColor,
-                      height: 1.5,
-                    ),
+                    style: bodyMedium.copyWith(color: bodyColor, height: 1.5),
                   ),
                   const SizedBox(height: 18),
                 ],
@@ -578,8 +523,9 @@ class _TopIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor =
-        active ? color.withValues(alpha: 0.45) : color.withValues(alpha: 1);
+    final effectiveColor = active
+        ? color.withValues(alpha: 0.45)
+        : color.withValues(alpha: 1);
     return IconButton(
       onPressed: active ? null : onPressed,
       tooltip: tooltip,
@@ -653,10 +599,13 @@ class _RegisterDeviceDialogState extends State<_RegisterDeviceDialog> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
-    final isComplete =
-        _controllers.every((controller) => controller.text.isNotEmpty);
+    final isComplete = _controllers.every(
+      (controller) => controller.text.isNotEmpty,
+    );
     final dialogBg = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final dialogText = isDark ? const Color(0xFFB9C0CB) : const Color(0xFF374151);
+    final dialogText = isDark
+        ? const Color(0xFFB9C0CB)
+        : const Color(0xFF374151);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -672,97 +621,100 @@ class _RegisterDeviceDialogState extends State<_RegisterDeviceDialog> {
             ),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                const gap = 8.0;
-                final available = constraints.maxWidth - (gap * 5);
-                final rawWidth = available / 6;
-                final boxWidth = rawWidth.clamp(34.0, 46.0);
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const gap = 8.0;
+                  final available = constraints.maxWidth - (gap * 5);
+                  final rawWidth = available / 6;
+                  final boxWidth = rawWidth.clamp(34.0, 46.0);
 
-                return Column(
-                  children: [
-                    Row(
-                      children: [
-                        const Spacer(),
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: Icon(
-                            Icons.close,
-                            color: isDark ? Colors.white : null,
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Spacer(),
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            icon: Icon(
+                              Icons.close,
+                              color: isDark ? Colors.white : null,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Icon(
-                      Icons.smartphone,
-                      size: 82,
-                      color: isDark ? const Color(0xFF415A77) : colorScheme.primary,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Enter the code shown on your device to add it to your account',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: dialogText,
-                        height: 1.4,
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(6, (index) {
-                        return Row(
-                          children: [
-                            SizedBox(
-                              width: boxWidth,
-                              height: 44,
-                              child: Focus(
-                                onKeyEvent: (node, event) {
-                                  if (event is KeyDownEvent &&
-                                      event.logicalKey ==
-                                          LogicalKeyboardKey.backspace) {
-                                    _onBackspace(index);
-                                  }
-                                  return KeyEventResult.ignored;
-                                },
-                                child: _CodeBox(
-                                  controller: _controllers[index],
-                                  focusNode: _focusNodes[index],
-                                  onChanged: (value) => _onChanged(index, value),
-                                  onSubmitted: (_) {
-                                    if (index == 5 && isComplete) _submit();
+                      const SizedBox(height: 4),
+                      Icon(
+                        Icons.smartphone,
+                        size: 82,
+                        color: isDark
+                            ? const Color(0xFF415A77)
+                            : colorScheme.primary,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Enter the code shown on your device to add it to your account',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: dialogText,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(6, (index) {
+                          return Row(
+                            children: [
+                              SizedBox(
+                                width: boxWidth,
+                                height: 44,
+                                child: Focus(
+                                  onKeyEvent: (node, event) {
+                                    if (event is KeyDownEvent &&
+                                        event.logicalKey ==
+                                            LogicalKeyboardKey.backspace) {
+                                      _onBackspace(index);
+                                    }
+                                    return KeyEventResult.ignored;
                                   },
+                                  child: _CodeBox(
+                                    controller: _controllers[index],
+                                    focusNode: _focusNodes[index],
+                                    onChanged: (value) =>
+                                        _onChanged(index, value),
+                                    onSubmitted: (_) {
+                                      if (index == 5 && isComplete) _submit();
+                                    },
+                                  ),
                                 ),
                               ),
-                            ),
-                            if (index != 5) const SizedBox(width: gap),
-                          ],
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: ElevatedButton(
-                        onPressed: isComplete ? _submit : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark
-                              ? const Color(0xFF415A77)
-                              : colorScheme.primary,
-                          foregroundColor: colorScheme.onPrimary,
-                          disabledBackgroundColor: isDark
-                              ? const Color(0xFF2D3138)
-                              : theme.disabledColor.withValues(alpha: 0.2),
-                        ),
-                        child: const Text('Register Device'),
+                              if (index != 5) const SizedBox(width: gap),
+                            ],
+                          );
+                        }),
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: ElevatedButton(
+                          onPressed: isComplete ? _submit : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isDark
+                                ? const Color(0xFF415A77)
+                                : colorScheme.primary,
+                            foregroundColor: colorScheme.onPrimary,
+                            disabledBackgroundColor: isDark
+                                ? const Color(0xFF2D3138)
+                                : theme.disabledColor.withValues(alpha: 0.2),
+                          ),
+                          child: const Text('Register Device'),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -810,7 +762,8 @@ class _CodeBoxState extends State<_CodeBox> {
     const navy = Color(0xFF1B263B);
     final fill = isDark ? const Color(0xFF3A3A3A) : const Color(0xFFD9D9D9);
     final border = isDark ? const Color(0xFF4A4A4A) : const Color(0xFFC8C8C8);
-    final titleMedium = theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
+    final titleMedium =
+        theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
     final codeStyle = titleMedium.copyWith(
       fontWeight: FontWeight.w700,
       fontSize: (titleMedium.fontSize ?? 16) - 2,
@@ -874,7 +827,8 @@ class _DeviceRegisteredDialog extends StatefulWidget {
   const _DeviceRegisteredDialog({required this.uid, required this.code});
 
   @override
-  State<_DeviceRegisteredDialog> createState() => _DeviceRegisteredDialogState();
+  State<_DeviceRegisteredDialog> createState() =>
+      _DeviceRegisteredDialogState();
 }
 
 class _DeviceRegisteredDialogState extends State<_DeviceRegisteredDialog> {
@@ -905,9 +859,9 @@ class _DeviceRegisteredDialogState extends State<_DeviceRegisteredDialog> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add device: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add device: $e')));
     }
   }
 
@@ -919,10 +873,15 @@ class _DeviceRegisteredDialogState extends State<_DeviceRegisteredDialog> {
     final bodyMedium =
         theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
     final dialogBg = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final titleColor = isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
-    final inputFill = isDark ? const Color(0xFF3A3A3A) : const Color(0xFFD9D9D9);
-    final inputBorder =
-        isDark ? const Color(0xFF4A4A4A) : const Color(0xFFC8C8C8);
+    final titleColor = isDark
+        ? const Color(0xFFF3F4F6)
+        : const Color(0xFF111827);
+    final inputFill = isDark
+        ? const Color(0xFF3A3A3A)
+        : const Color(0xFFD9D9D9);
+    final inputBorder = isDark
+        ? const Color(0xFF4A4A4A)
+        : const Color(0xFFC8C8C8);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -944,7 +903,9 @@ class _DeviceRegisteredDialogState extends State<_DeviceRegisteredDialog> {
                     children: [
                       const Spacer(),
                       IconButton(
-                        onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                        onPressed: _saving
+                            ? null
+                            : () => Navigator.of(context).pop(),
                         icon: Icon(
                           Icons.close,
                           color: isDark ? Colors.white : null,
