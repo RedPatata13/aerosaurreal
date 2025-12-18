@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import 'dashboard.dart';
 import 'monitoring.dart';
 import 'insights.dart';
+import 'device_management.dart';
 import '../models/device.dart';
+import '../platform/system_settings.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -163,7 +165,29 @@ class _HomePageState extends State<HomePage> {
                 _HomeHeader(
                   username: username,
                   iconColor: isDark ? Colors.white : const Color(0xFF111827),
-                  onRegisterDevice: () => _showRegisterDeviceDialog(uid),
+                  onRegisterDevice: () {
+                    if (!hasDevices) {
+                      _showRegisterDeviceDialog(uid);
+                      return;
+                    }
+
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => DeviceManagementPage(
+                          uid: uid,
+                          devices: devicesForUi,
+                          onDevicesChanged: (next) {
+                            setState(() {
+                              _deviceState = next;
+                              if (_selectedDeviceIndex >= next.length) {
+                                _selectedDeviceIndex = 0;
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
                 Expanded(
                   child: hasDevices
@@ -358,7 +382,18 @@ class _HomeHeader extends StatelessWidget {
             ),
           ),
           _TopIconButton(
-            onPressed: () {},
+            onPressed: () async {
+              try {
+                await SystemSettings.openWifiSettings();
+              } catch (_) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Unable to open Wi‑Fi settings.'),
+                  ),
+                );
+              }
+            },
             icon: Icons.wifi,
             tooltip: 'Wi‑Fi',
             color: iconColor,
@@ -531,24 +566,28 @@ class _TopIconButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final Color color;
+  final bool active;
 
   const _TopIconButton({
     required this.onPressed,
     required this.icon,
     required this.tooltip,
     this.color = const Color(0xFF111827),
+    this.active = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor =
+        active ? color.withValues(alpha: 0.45) : color.withValues(alpha: 1);
     return IconButton(
-      onPressed: onPressed,
+      onPressed: active ? null : onPressed,
       tooltip: tooltip,
       iconSize: 20,
       visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 34, height: 34),
-      icon: Icon(icon, color: color),
+      icon: Icon(icon, color: effectiveColor),
     );
   }
 }
