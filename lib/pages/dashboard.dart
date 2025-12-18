@@ -1,75 +1,28 @@
 import 'package:flutter/material.dart';
 import '../components/aqi_card.dart';
+import '../components/info_dialog.dart';
+import '../models/device.dart';
 
-class Dashboard extends StatefulWidget {
-  const Dashboard({super.key});
+class Dashboard extends StatelessWidget {
+  final List<Device> devices;
+  final int selectedDeviceIndex;
+  final ValueChanged<int> onSelectDevice;
+  final ValueChanged<Device> onUpdateDevice;
 
-  @override
-  State<Dashboard> createState() => _DashboardState();
-}
-
-class _DashboardState extends State<Dashboard> {
-  final List<_Device> _devices = [
-    _Device(
-      id: 'AV501',
-      name: 'Room 301',
-      isOn: true,
-      aqiLabel: 'Good',
-      aqiValue: 75,
-      aqiPercent: 0.75,
-      aqiRingColor: Color(0xFF3AB54A),
-      smartMode: true,
-      autoAdjustFanSpeed: true,
-      turnOffAutomatically: false,
-      fanSpeed: FanSpeed.moderate,
-    ),
-    _Device(
-      id: 'AV502',
-      name: 'Room 302',
-      isOn: false,
-      aqiLabel: 'Moderate',
-      aqiValue: 61,
-      aqiPercent: 0.61,
-      aqiRingColor: Color(0xFFFFC107),
-      smartMode: false,
-      autoAdjustFanSpeed: false,
-      turnOffAutomatically: true,
-      fanSpeed: FanSpeed.slow,
-    ),
-    _Device(
-      id: 'AV503',
-      name: 'Room 303',
-      isOn: true,
-      aqiLabel: 'Good',
-      aqiValue: 90,
-      aqiPercent: 0.90,
-      aqiRingColor: Color(0xFF3AB54A),
-      smartMode: true,
-      autoAdjustFanSpeed: false,
-      turnOffAutomatically: true,
-      fanSpeed: FanSpeed.fast,
-    ),
-  ];
-
-  int _selectedDeviceIndex = 0;
-
-  _Device get _selectedDevice => _devices[_selectedDeviceIndex];
-
-  void _updateSelectedDevice(_Device Function(_Device current) update) {
-    setState(() {
-      _devices[_selectedDeviceIndex] = update(_devices[_selectedDeviceIndex]);
-    });
-  }
-
-  void _showAqiInfo() {
-    showDialog<void>(
-      context: context,
-      builder: (context) => const _AqiInfoDialog(),
-    );
-  }
+  const Dashboard({
+    super.key,
+    required this.devices,
+    required this.selectedDeviceIndex,
+    required this.onSelectDevice,
+    required this.onUpdateDevice,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (devices.isEmpty) return const SizedBox.shrink();
+
+    final safeIndex = selectedDeviceIndex.clamp(0, devices.length - 1);
+    final selectedDevice = devices[safeIndex];
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -81,9 +34,9 @@ class _DashboardState extends State<Dashboard> {
     final primary = isDark ? const Color(0xFF415A77) : const Color(0xFF1B263B);
     final deviceChipBaseColor = isDark ? const Color(0xFF1B263B) : primary;
     final fanInactiveFill =
-        isDark ? const Color(0xFF1B263B) : const Color(0xFF415A77);
+        isDark ? const Color(0xFF1B263B) : const Color(0xFF1B263B);
     final fanActiveColor =
-        isDark ? const Color(0xFF415A77) : const Color(0xFF1B263B);
+        isDark ? const Color(0xFF415A77) : const Color(0xFF415A77);
     final fanInactiveTextColor =
         isDark ? bodyColor : Colors.white.withValues(alpha: 0.95);
 
@@ -101,8 +54,7 @@ class _DashboardState extends State<Dashboard> {
     );
 
     return SingleChildScrollView(
-      // Parent (Home header) already provides horizontal padding; avoid double padding.
-      padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -110,12 +62,19 @@ class _DashboardState extends State<Dashboard> {
             background: primary,
             titleStyle: cardTitleStyle,
             bodyStyle: bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.9)),
-            onInfo: _showAqiInfo,
-            valueLabel: _selectedDevice.aqiLabel,
-            aqiValue: _selectedDevice.aqiValue,
-            percent: _selectedDevice.aqiPercent,
-            percentText: '${(_selectedDevice.aqiPercent * 100).round()}%',
-            ringColor: _selectedDevice.aqiRingColor,
+            onInfo: () {
+              showInfoDialog(
+                context,
+                title: 'AQI',
+                body:
+                    'Air Quality Index (AQI) indicates overall air quality on a 0–200 scale, where 0 is excellent and 200 is very unhealthy. Higher values mean cleaner air.',
+              );
+            },
+            valueLabel: selectedDevice.aqiLabel,
+            aqiValue: selectedDevice.aqiValue,
+            percent: selectedDevice.aqiPercent,
+            percentText: '${(selectedDevice.aqiPercent * 100).round()}%',
+            ringColor: selectedDevice.aqiRingColor,
           ),
           const SizedBox(height: 16),
           Text(
@@ -129,21 +88,18 @@ class _DashboardState extends State<Dashboard> {
               scrollDirection: Axis.horizontal,
               padding: EdgeInsets.zero,
               children: [
-                for (int index = 0; index < _devices.length; index++) ...[
+                for (int index = 0; index < devices.length; index++) ...[
                   _DeviceChip(
-                    device: _devices[index],
-                    selected: index == _selectedDeviceIndex,
+                    device: devices[index],
+                    selected: index == safeIndex,
                     color: deviceChipBaseColor,
-                    onSelect: () => setState(() => _selectedDeviceIndex = index),
+                    onSelect: () => onSelectDevice(index),
                     onTogglePower: () {
-                      setState(() {
-                        _devices[index] = _devices[index].copyWith(
-                          isOn: !_devices[index].isOn,
-                        );
-                      });
+                      final current = devices[index];
+                      onUpdateDevice(current.copyWith(isOn: !current.isOn));
                     },
                   ),
-                  if (index != _devices.length - 1) const SizedBox(width: 10),
+                  if (index != devices.length - 1) const SizedBox(width: 10),
                 ],
               ],
             ),
@@ -158,21 +114,21 @@ class _DashboardState extends State<Dashboard> {
               children: [
                 _ToggleRow(
                   label: 'Smart Mode',
-                  value: _selectedDevice.smartMode,
+                  value: selectedDevice.smartMode,
                   onChanged: (value) =>
-                      _updateSelectedDevice((d) => d.copyWith(smartMode: value)),
+                      onUpdateDevice(selectedDevice.copyWith(smartMode: value)),
                   labelStyle: bodyMedium.copyWith(
                     color: titleColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Divider(color: borderColor, height: 18),
-                if (_selectedDevice.smartMode) ...[
+                if (selectedDevice.smartMode) ...[
                   _ToggleRow(
                     label: 'Auto adjust fan speed',
-                    value: _selectedDevice.autoAdjustFanSpeed,
-                    onChanged: (value) => _updateSelectedDevice(
-                      (d) => d.copyWith(autoAdjustFanSpeed: value),
+                    value: selectedDevice.autoAdjustFanSpeed,
+                    onChanged: (value) => onUpdateDevice(
+                      selectedDevice.copyWith(autoAdjustFanSpeed: value),
                     ),
                     labelStyle: bodyMedium.copyWith(
                       color: titleColor,
@@ -182,9 +138,9 @@ class _DashboardState extends State<Dashboard> {
                   Divider(color: borderColor, height: 18),
                   _ToggleRow(
                     label: 'Turn off automatically',
-                    value: _selectedDevice.turnOffAutomatically,
-                    onChanged: (value) => _updateSelectedDevice(
-                      (d) => d.copyWith(turnOffAutomatically: value),
+                    value: selectedDevice.turnOffAutomatically,
+                    onChanged: (value) => onUpdateDevice(
+                      selectedDevice.copyWith(turnOffAutomatically: value),
                     ),
                     labelStyle: bodyMedium.copyWith(
                       color: titleColor,
@@ -204,9 +160,9 @@ class _DashboardState extends State<Dashboard> {
             borderColor: borderColor,
             titleStyle: null,
             child: _FanSpeedSelector(
-              value: _selectedDevice.fanSpeed,
+              value: selectedDevice.fanSpeed,
               onChanged: (value) =>
-                  _updateSelectedDevice((d) => d.copyWith(fanSpeed: value)),
+                  onUpdateDevice(selectedDevice.copyWith(fanSpeed: value)),
               surfaceColor: surfaceColor,
               borderColor: borderColor,
               activeColor: fanActiveColor,
@@ -225,10 +181,8 @@ class _DashboardState extends State<Dashboard> {
   }
 }
 
-enum FanSpeed { slow, moderate, fast }
-
 class _DeviceChip extends StatelessWidget {
-  final _Device device;
+  final Device device;
   final Color color;
   final bool selected;
   final VoidCallback onSelect;
@@ -334,136 +288,6 @@ class _SectionCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _AqiInfoDialog extends StatelessWidget {
-  const _AqiInfoDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final dialogBg = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final titleColor = isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
-    final bodyColor = isDark ? const Color(0xFFB9C0CB) : const Color(0xFF4B5563);
-    final primary = isDark ? const Color(0xFF415A77) : const Color(0xFF1B263B);
-
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: SizedBox(
-          width: 340,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: dialogBg,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  RichText(
-                    textAlign: TextAlign.left,
-                    text: TextSpan(
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: bodyColor,
-                        height: 1.4,
-                        fontSize:
-                            (theme.textTheme.bodyMedium?.fontSize ?? 14) - 1,
-                      ),
-                      children: [
-                        TextSpan(
-                          text: 'Air Quality Index (AQI)\n\n',
-                          style: TextStyle(
-                            color: titleColor,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const TextSpan(
-                          text:
-                              'Indicates air quality on a 0–200 AQI scale, where 0 is excellent and 200 is very unhealthy. Higher values mean cleaner air.',
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: 140,
-                    height: 44,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primary,
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Close'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Device {
-  final String id;
-  final String name;
-  final bool isOn;
-  final String aqiLabel;
-  final int aqiValue;
-  final double aqiPercent;
-  final Color aqiRingColor;
-  final bool smartMode;
-  final bool autoAdjustFanSpeed;
-  final bool turnOffAutomatically;
-  final FanSpeed fanSpeed;
-
-  const _Device({
-    required this.id,
-    required this.name,
-    required this.isOn,
-    required this.aqiLabel,
-    required this.aqiValue,
-    required this.aqiPercent,
-    required this.aqiRingColor,
-    required this.smartMode,
-    required this.autoAdjustFanSpeed,
-    required this.turnOffAutomatically,
-    required this.fanSpeed,
-  });
-
-  _Device copyWith({
-    String? id,
-    String? name,
-    bool? isOn,
-    String? aqiLabel,
-    int? aqiValue,
-    double? aqiPercent,
-    Color? aqiRingColor,
-    bool? smartMode,
-    bool? autoAdjustFanSpeed,
-    bool? turnOffAutomatically,
-    FanSpeed? fanSpeed,
-  }) =>
-      _Device(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        isOn: isOn ?? this.isOn,
-        aqiLabel: aqiLabel ?? this.aqiLabel,
-        aqiValue: aqiValue ?? this.aqiValue,
-        aqiPercent: aqiPercent ?? this.aqiPercent,
-        aqiRingColor: aqiRingColor ?? this.aqiRingColor,
-        smartMode: smartMode ?? this.smartMode,
-        autoAdjustFanSpeed: autoAdjustFanSpeed ?? this.autoAdjustFanSpeed,
-        turnOffAutomatically: turnOffAutomatically ?? this.turnOffAutomatically,
-        fanSpeed: fanSpeed ?? this.fanSpeed,
-      );
 }
 
 class _ToggleRow extends StatelessWidget {

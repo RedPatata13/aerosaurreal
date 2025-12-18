@@ -4,6 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
 import 'dashboard.dart';
+import 'monitoring.dart';
+import 'insights.dart';
+import '../models/device.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,6 +20,14 @@ class _HomePageState extends State<HomePage> {
   // immediately or the Future can't be initialized (though less likely here).
   late Stream<DocumentSnapshot<Map<String, dynamic>>> _userDocStream;
   int _selectedIndex = 0;
+  int _selectedDeviceIndex = 0;
+  List<Device> _deviceState = const [];
+
+  static const _defaultDeviceSpecs = [
+    {'id': 'AV501', 'name': 'Room 301'},
+    {'id': 'AV502', 'name': 'Room 302'},
+    {'id': 'AV503', 'name': 'Room 303'},
+  ];
 
   @override
   void initState() {
@@ -57,6 +68,17 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) => _RegisterDeviceDialog(uid: uid),
     );
+  }
+
+  List<Device> _defaultDevices() {
+    return List.generate(_defaultDeviceSpecs.length, (index) {
+      final spec = _defaultDeviceSpecs[index];
+      return Device.demoFromDb(
+        id: spec['id']!,
+        name: spec['name']!,
+        seed: index,
+      );
+    });
   }
 
   @override
@@ -119,27 +141,78 @@ class _HomePageState extends State<HomePage> {
           return const Scaffold(body: SizedBox.shrink());
         }
 
+        if (hasDevices && _deviceState.isEmpty) {
+          final initial = _defaultDevices();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            setState(() => _deviceState = initial);
+          });
+        }
+
+        final devicesForUi = hasDevices ? _deviceState : const <Device>[];
+        final safeSelectedIndex = devicesForUi.isEmpty
+            ? 0
+            : _selectedDeviceIndex.clamp(0, devicesForUi.length - 1);
+        final selectedDevice =
+            devicesForUi.isEmpty ? null : devicesForUi[safeSelectedIndex];
+
         return Scaffold(
           body: SafeArea(
-            child: hasDevices
-                ? IndexedStack(
-                    index: _selectedIndex,
-                    children: [
-                      _DashboardTab(
-                        username: username,
-                        hasDevices: true,
-                        onRegisterDevice: () => _showRegisterDeviceDialog(uid),
-                        onLogout: _handleLogoutAndRedirect,
-                      ),
-                      const _PlaceholderTab(title: 'Monitoring'),
-                      const _PlaceholderTab(title: 'Insights'),
-                    ],
-                  )
-                : _NoDeviceGate(
-                    username: username,
-                    onRegisterDevice: () => _showRegisterDeviceDialog(uid),
-                    onLogout: _handleLogoutAndRedirect,
-                  ),
+            child: Column(
+              children: [
+                _HomeHeader(
+                  username: username,
+                  iconColor: isDark ? Colors.white : const Color(0xFF111827),
+                  onRegisterDevice: () => _showRegisterDeviceDialog(uid),
+                ),
+                Expanded(
+                  child: hasDevices
+                      ? IndexedStack(
+                          index: _selectedIndex,
+                          children: [
+                            if (selectedDevice != null)
+                              Dashboard(
+                                devices: devicesForUi,
+                                selectedDeviceIndex: safeSelectedIndex,
+                                onSelectDevice: (index) {
+                                  setState(() {
+                                    _selectedDeviceIndex = index.clamp(
+                                      0,
+                                      devicesForUi.length - 1,
+                                    );
+                                  });
+                                },
+                                onUpdateDevice: (updated) {
+                                  setState(() {
+                                    final current = _deviceState.isEmpty
+                                        ? devicesForUi
+                                        : _deviceState;
+                                    _deviceState = current
+                                        .map((d) =>
+                                            d.id == updated.id ? updated : d)
+                                        .toList(growable: false);
+                                  });
+                                },
+                              )
+                            else
+                              const SizedBox.shrink(),
+                            if (selectedDevice != null)
+                              Monitoring(device: selectedDevice)
+                            else
+                              const SizedBox.shrink(),
+                            if (selectedDevice != null)
+                              Insights(device: selectedDevice)
+                            else
+                              const SizedBox.shrink(),
+                          ],
+                        )
+                      : _NoDeviceContent(
+                          onRegisterDevice: () => _showRegisterDeviceDialog(uid),
+                          onLogout: _handleLogoutAndRedirect,
+                        ),
+                ),
+              ],
+            ),
           ),
           bottomNavigationBar: isDark
               ? NavigationBarTheme(
@@ -220,15 +293,108 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _DashboardTab extends StatelessWidget {
+class _HomeHeader extends StatelessWidget {
   final String username;
-  final bool hasDevices;
+  final Color iconColor;
+  final VoidCallback onRegisterDevice;
+
+  const _HomeHeader({
+    required this.username,
+    required this.iconColor,
+    required this.onRegisterDevice,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    const navy = Color(0xFF1B263B);
+    const slate = Color(0xFF415A77);
+    final titleColor =
+        isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
+    final bodySmall = theme.textTheme.bodySmall ?? const TextStyle(fontSize: 12);
+    final titleMedium =
+        theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 26, 18, 10),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: isDark
+                ? slate.withValues(alpha: 0.75)
+                : const Color(0xFFF2F4F7),
+            child: Icon(
+              Icons.person_outline,
+              color: isDark ? Colors.white : navy,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hello!',
+                  style: bodySmall.copyWith(
+                    color: isDark
+                        ? const Color(0xFF9CA3AF)
+                        : const Color(0xFF6B7280),
+                  ),
+                ),
+                Text(
+                  username,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: titleMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: (titleMedium.fontSize ?? 16) + 2,
+                    color: titleColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _TopIconButton(
+            onPressed: () {},
+            icon: Icons.wifi,
+            tooltip: 'Wi‑Fi',
+            color: iconColor,
+          ),
+          const SizedBox(width: 4),
+          _TopIconButton(
+            onPressed: onRegisterDevice,
+            icon: Icons.add,
+            tooltip: 'Register device',
+            color: iconColor,
+          ),
+          const SizedBox(width: 4),
+          _TopIconButton(
+            onPressed: () {},
+            icon: Icons.notifications_none,
+            tooltip: 'Notifications',
+            color: iconColor,
+          ),
+          const SizedBox(width: 4),
+          _TopIconButton(
+            onPressed: () {},
+            icon: Icons.settings_outlined,
+            tooltip: 'Settings',
+            color: iconColor,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoDeviceContent extends StatelessWidget {
   final VoidCallback onRegisterDevice;
   final VoidCallback onLogout;
 
-  const _DashboardTab({
-    required this.username,
-    required this.hasDevices,
+  const _NoDeviceContent({
     required this.onRegisterDevice,
     required this.onLogout,
   });
@@ -240,221 +406,122 @@ class _DashboardTab extends StatelessWidget {
     const navy = Color(0xFF1B263B);
     const slate = Color(0xFF415A77);
     const danger = Color(0xFFC53A3A);
-    final scaffoldBg = isDark ? const Color(0xFF0E0F13) : Colors.white;
     final cardBg = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final cardBorder = isDark ? const Color(0xFF2B2F36) : const Color(0xFFD1D5DB);
-    final titleColor = isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
-    final bodyColor = isDark ? const Color(0xFFB9C0CB) : const Color(0xFF4B5563);
-    final iconColor = isDark ? Colors.white : const Color(0xFF111827);
+    final cardBorder =
+        isDark ? const Color(0xFF2B2F36) : const Color(0xFFD1D5DB);
+    final titleColor =
+        isDark ? const Color(0xFFF3F4F6) : const Color(0xFF111827);
+    final bodyColor =
+        isDark ? const Color(0xFFB9C0CB) : const Color(0xFF4B5563);
     final primaryButton = isDark ? slate : navy;
     final bodyMedium = theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-    final bodySmall = theme.textTheme.bodySmall ?? const TextStyle(fontSize: 12);
-    final titleMedium = theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
+    final titleMedium =
+        theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
 
-    return ColoredBox(
-      color: scaffoldBg,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 26, 18, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor:
-                      isDark ? slate.withValues(alpha: 0.75) : const Color(0xFFF2F4F7),
-                  child: Icon(
-                    Icons.person_outline,
-                    color: isDark ? Colors.white : navy,
-                    size: 26,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hello!',
-                        style: bodySmall.copyWith(
-                          color: isDark
-                              ? const Color(0xFF9CA3AF)
-                              : const Color(0xFF6B7280),
-                        ),
-                      ),
-                      Text(
-                        username,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: titleMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontSize: (titleMedium.fontSize ?? 16) + 2,
-                          color: titleColor,
-                        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cardBorder, width: 1.2),
+              boxShadow: isDark
+                  ? const []
+                  : const [
+                      BoxShadow(
+                        color: Color(0x11000000),
+                        blurRadius: 12,
+                        offset: Offset(0, 6),
                       ),
                     ],
-                  ),
-                ),
-                _TopIconButton(
-                  onPressed: () {},
-                  icon: Icons.wifi,
-                  tooltip: 'Wi‑Fi',
-                  color: iconColor,
-                ),
-                const SizedBox(width: 4),
-                _TopIconButton(
-                  onPressed: onRegisterDevice,
-                  icon: Icons.add,
-                  tooltip: 'Register device',
-                  color: iconColor,
-                ),
-                const SizedBox(width: 4),
-                _TopIconButton(
-                  onPressed: () {},
-                  icon: Icons.notifications_none,
-                  tooltip: 'Notifications',
-                  color: iconColor,
-                ),
-                const SizedBox(width: 4),
-                _TopIconButton(
-                  onPressed: () {},
-                  icon: Icons.settings_outlined,
-                  tooltip: 'Settings',
-                  color: iconColor,
-                ),
-              ],
             ),
-            const SizedBox(height: 14),
-            if (!hasDevices) ...[
-              Container(
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: cardBorder, width: 1.2),
-                  boxShadow: isDark
-                      ? const []
-                      : const [
-                          BoxShadow(
-                            color: Color(0x11000000),
-                            blurRadius: 12,
-                            offset: Offset(0, 6),
-                          ),
-                        ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 34, 18, 28),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      Text(
-                        'No devices registered on your account.',
-                        textAlign: TextAlign.center,
-                        style: titleMedium.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: titleColor,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        "It appears you don't have any devices registered. Register your device now!",
-                        textAlign: TextAlign.center,
-                        style: bodyMedium.copyWith(
-                          color: bodyColor,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                    ],
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 34, 18, 28),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Text(
+                    'No devices registered on your account.',
+                    textAlign: TextAlign.center,
+                    style: titleMedium.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: titleColor,
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              Align(
-                alignment: Alignment.center,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 330),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Flexible(
-                        child: SizedBox(
-                          height: 40,
-                          child: ElevatedButton.icon(
-                            onPressed: onRegisterDevice,
-                            icon: const Icon(Icons.link, size: 18),
-                            label: const Text('Register new device'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryButton,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                              textStyle: bodyMedium.copyWith(
-                                fontWeight: FontWeight.w600,
-                                fontSize: (bodyMedium.fontSize ?? 14) - 1,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      SizedBox(
-                        height: 40,
-                        width: 120,
-                        child: ElevatedButton.icon(
-                          onPressed: onLogout,
-                          icon: const Icon(Icons.logout, size: 18),
-                          label: const Text('Logout'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: danger,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            textStyle: bodyMedium.copyWith(
-                              fontWeight: FontWeight.w600,
-                              fontSize: (bodyMedium.fontSize ?? 14) - 1,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 14),
+                  Text(
+                    "It appears you don't have any devices registered. Register your device now!",
+                    textAlign: TextAlign.center,
+                    style: bodyMedium.copyWith(
+                      color: bodyColor,
+                      height: 1.5,
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 18),
+                ],
               ),
-            ] else ...[
-              Expanded(
-                child: const Dashboard(),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Align(
+            alignment: Alignment.center,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 330),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: SizedBox(
+                      height: 40,
+                      child: ElevatedButton.icon(
+                        onPressed: onRegisterDevice,
+                        icon: const Icon(Icons.link, size: 18),
+                        label: const Text('Register new device'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryButton,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          textStyle: bodyMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: (bodyMedium.fontSize ?? 14) - 1,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  SizedBox(
+                    height: 40,
+                    width: 120,
+                    child: ElevatedButton.icon(
+                      onPressed: onLogout,
+                      icon: const Icon(Icons.logout, size: 18),
+                      label: const Text('Logout'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: danger,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        textStyle: bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: (bodyMedium.fontSize ?? 14) - 1,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ],
-        ),
+            ),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _NoDeviceGate extends StatelessWidget {
-  final String username;
-  final VoidCallback onRegisterDevice;
-  final VoidCallback onLogout;
-
-  const _NoDeviceGate({
-    required this.username,
-    required this.onRegisterDevice,
-    required this.onLogout,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _DashboardTab(
-      username: username,
-      hasDevices: false,
-      onRegisterDevice: onRegisterDevice,
-      onLogout: onLogout,
     );
   }
 }
@@ -482,23 +549,6 @@ class _TopIconButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 34, height: 34),
       icon: Icon(icon, color: color),
-    );
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  final String title;
-
-  const _PlaceholderTab({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Text(
-        '$title (coming soon)',
-        style: theme.textTheme.titleMedium,
-      ),
     );
   }
 }
