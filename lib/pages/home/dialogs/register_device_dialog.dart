@@ -173,6 +173,9 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
                             disabledBackgroundColor: isDark
                                 ? const Color(0xFF2D3138)
                                 : theme.disabledColor.withValues(alpha: 0.2),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: const Text('Register Device'),
                         ),
@@ -241,9 +244,11 @@ class _CodeBoxState extends State<_CodeBox> {
 
     return Container(
       decoration: BoxDecoration(
-        color: fill,
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: border),
+        border: Border.all(
+          color: isDark ? const Color(0xFF4A4A4A) : const Color(0xFFC8C8C8),
+        ),
       ),
       alignment: Alignment.center,
       child: TextSelectionTheme(
@@ -267,6 +272,8 @@ class _CodeBoxState extends State<_CodeBox> {
           decoration: const InputDecoration(
             border: InputBorder.none,
             isDense: true,
+            filled: false,
+            fillColor: Colors.transparent,
             contentPadding: EdgeInsets.zero,
           ),
           onChanged: widget.onChanged,
