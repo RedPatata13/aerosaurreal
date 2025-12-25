@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '/../components/aqi_card.dart';
-import '/../dialogs/info_dialog.dart';
+import '../home/dialogs/info_dialog.dart';
 import '/../models/device.dart';
 import 'widgets/monitoring_legend.dart';
 import 'widgets/metric_card.dart';
@@ -88,7 +88,8 @@ class Monitoring extends StatelessWidget {
             onInfo: () => showInfoDialog(
               context,
               title: 'PM2.5',
-              body: 'Fine particles that can enter the lungs.',
+              body:
+                  'These are tiny particles about 30 times smaller than the width of a human hair. They can stay in the air for hours and reach deep into the lungs, affecting breathing and overall health',
             ),
           ),
 
@@ -107,7 +108,8 @@ class Monitoring extends StatelessWidget {
             onInfo: () => showInfoDialog(
               context,
               title: 'PM10',
-              body: 'Larger inhalable particles.',
+              body:
+                  'PM10 particles are about one-seventh the width of a human hair. They include dust, pollen, and smoke which are small enough to be inhaled into the respiratory system.',
             ),
           ),
 
@@ -126,7 +128,8 @@ class Monitoring extends StatelessWidget {
             onInfo: () => showInfoDialog(
               context,
               title: 'VOC',
-              body: 'Invisible gases affecting air quality.',
+              body:
+                  'VOCs are invisible gases released from products like paints, cleaners, or furniture. You can’t see them, but at high levels they can irritate your eyes, nose, and throat and worsen indoor air quality.',
             ),
           ),
 

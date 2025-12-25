@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '/../components/aqi_card.dart';
-import '/../dialogs/info_dialog.dart';
+import '../home/dialogs/info_dialog.dart';
 import '/../models/device.dart';
 import 'widgets/device_chip.dart';
 import 'widgets/section_card.dart';
