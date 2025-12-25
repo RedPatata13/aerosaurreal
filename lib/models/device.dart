@@ -100,14 +100,19 @@ class Device {
       purifierUsageHours7d: purifierUsageHours7d ?? this.purifierUsageHours7d,
       totalUsageHours7d: totalUsageHours7d ?? this.totalUsageHours7d,
       dailyUsageHours: dailyUsageHours ?? this.dailyUsageHours,
-      timeInGoodOrModeratePercentToday: timeInGoodOrModeratePercentToday ??
+      timeInGoodOrModeratePercentToday:
+          timeInGoodOrModeratePercentToday ??
           this.timeInGoodOrModeratePercentToday,
       directHoursToday: directHoursToday ?? this.directHoursToday,
       energySavedPercent: energySavedPercent ?? this.energySavedPercent,
     );
   }
 
-  static Device demoFromDb({required String id, required String name, int seed = 0}) {
+  static Device demoFromDb({
+    required String id,
+    required String name,
+    int seed = 0,
+  }) {
     final presets = <Device>[
       const Device(
         id: 'AV501',
@@ -126,7 +131,7 @@ class Device {
         voc: '0.11',
         aqiPeak7d: [150, 130, 120, 110, 100, 95, 120],
         aqiAverage7d: [120, 110, 100, 95, 85, 80, 105],
-        purifierUsageHours7d: [14.4, 9.3, 15.5, 14.4, 2.2, 3.3, 16.5],
+        purifierUsageHours7d: [14.4, 9.3, 15.5, 14.4, 2.2, 3.3, 14.5],
         totalUsageHours7d: 71.6,
         dailyUsageHours: 10.2,
         timeInGoodOrModeratePercentToday: 85,
