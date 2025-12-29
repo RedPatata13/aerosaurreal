@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../platform/system_settings.dart';
 import '../enum/active_icon.dart';
 
 class TopNavbar extends StatelessWidget {
