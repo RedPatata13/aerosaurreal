@@ -7,7 +7,7 @@ import '../../dashboard/dashboard.dart';
 import '../../monitoring/monitoring.dart';
 import '../../insights/insights.dart';
 import '../../device_management/device_management.dart';
-import '../../settings.dart';
+import '../../settings/settings.dart';
 
 import '../../../models/device.dart';
 import '../../../components/navbar.dart';
