@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../settings/settings.dart';
 import '../../../platform/system_settings.dart';
 import 'top_icon_button.dart';
+import '../../../routes/routes.dart';
 
 class HomeHeader extends StatelessWidget {
   final String username;
@@ -96,17 +97,19 @@ class HomeHeader extends StatelessWidget {
           ),
           const SizedBox(width: 4),
           TopIconButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.of(context).pushNamed(AppRoutes.notifications);
+            },
             icon: Icons.notifications_none,
             tooltip: 'Notifications',
             color: iconColor,
           ),
+
           const SizedBox(width: 4),
+
           TopIconButton(
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const SettingsPage()),
-              );
+              Navigator.of(context).pushNamed(AppRoutes.settings);
             },
             icon: Icons.settings_outlined,
             tooltip: 'Settings',

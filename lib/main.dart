@@ -10,7 +10,7 @@ import 'pages/device_management/device_management.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'theme/app_theme.dart';
 import 'routes/routes.dart';
-import 'pages/notfications.dart';
+import 'pages/notifications/notfications.dart';
 import 'pages/device_management/device_management_args.dart';
 import 'pages/location_gate.dart';
 
@@ -61,7 +61,7 @@ class _MyAppState extends State<MyApp> {
         AppRoutes.login: (_) => const LoginPage(),
         AppRoutes.home: (_) => const LocationGate(child: HomePage()),
         AppRoutes.settings: (_) => const SettingsPage(),
-        AppRoutes.notifications: (_) => const NotficationsPage(),
+        AppRoutes.notifications: (_) => const NotificationsPage(),
       },
 
       onGenerateRoute: (settings) {
