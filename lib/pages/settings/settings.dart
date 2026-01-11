@@ -7,6 +7,8 @@ import '/services/wifi_service.dart';
 import 'package:app_settings/app_settings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../main.dart';
+import 'dialogs/change_email_dialog/update_email_dialog.dart';
+import 'dialogs/change_username_dialog/update_username_dialog.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -34,7 +36,6 @@ class SettingsPage extends StatelessWidget {
               Expanded(
                 child: ListView(
                   children: [
-                    /// ACCOUNT MANAGEMENT
                     SettingsSection(
                       title: 'Account Management',
                       children: [
@@ -46,50 +47,116 @@ class SettingsPage extends StatelessWidget {
                                   (p) => p.providerId == 'google.com',
                                 ) ??
                                 false;
+                            final hasPassword =
+                                user?.providerData.any(
+                                  (p) => p.providerId == 'password',
+                                ) ??
+                                false;
+                            final email = user?.email;
 
-                            if (hasGoogleProvider) {
-                              return Column(
-                                children: [
-                                  SettingsTile(
-                                    icon: const Icon(Icons.email_outlined),
-                                    title: 'Email',
-                                    subtitle: user?.email ?? 'N/A',
-                                  ),
-                                  SettingsTile(
-                                    icon: const Icon(Icons.person_outline),
-                                    title: 'Username',
-                                    subtitle: 'Set your username',
-                                  ),
-                                  SettingsTile(
-                                    icon: const Icon(Icons.lock_outline),
-                                    title: 'Set Password',
-                                    trailing: const Icon(Icons.chevron_right),
-                                    onTap: () {},
-                                  ),
-                                ],
-                              );
-                            } else {
-                              return Column(
-                                children: [
-                                  SettingsTile(
-                                    icon: const Icon(Icons.email_outlined),
-                                    title: 'Email',
-                                    subtitle: user?.email ?? 'N/A',
-                                  ),
-                                  SettingsTile(
-                                    icon: const Icon(Icons.person_outline),
-                                    title: 'Username',
-                                    subtitle: user?.displayName ?? 'N/A',
-                                  ),
-                                  SettingsTile(
-                                    icon: const Icon(Icons.lock_outline),
-                                    title: 'Update Password',
-                                    trailing: const Icon(Icons.chevron_right),
-                                    onTap: () {},
-                                  ),
-                                ],
-                              );
-                            }
+                            return Column(
+                              children: [
+                                SettingsTile(
+                                  icon: const Icon(Icons.email_outlined),
+                                  title: 'Email',
+                                  subtitle:
+                                      user?.email ??
+                                      (hasGoogleProvider ? 'N/A' : 'Not set'),
+                                  trailing: hasGoogleProvider
+                                      ? const Icon(Icons.chevron_right)
+                                      : null,
+                                  onTap: hasGoogleProvider
+                                      ? () async {
+                                          await showDialog<bool>(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (_) =>
+                                                const UpdateEmailDialog(),
+                                          );
+                                        }
+                                      : null,
+                                ),
+
+                                SettingsTile(
+                                  icon: const Icon(Icons.person_outline),
+                                  title: 'Username',
+                                  subtitle:
+                                      user?.displayName ??
+                                      (hasGoogleProvider
+                                          ? 'Set your username'
+                                          : 'N/A'),
+                                  trailing: hasGoogleProvider
+                                      ? const Icon(Icons.chevron_right)
+                                      : null,
+                                  onTap: hasGoogleProvider
+                                      ? () async {
+                                          await showDialog<bool>(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (_) =>
+                                                const UpdateUsernameDialog(),
+                                          );
+                                        }
+                                      : null,
+                                ),
+
+                                SettingsTile(
+                                  icon: const Icon(Icons.lock_outline),
+                                  title: hasPassword
+                                      ? 'Update Password'
+                                      : 'Set Password',
+                                  trailing: const Icon(Icons.chevron_right),
+                                  onTap: () async {
+                                    if (email == null || email.isEmpty) {
+                                      // User has no email → cannot reset/set password
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Set up your email first to manage password',
+                                            ),
+                                            backgroundColor: Colors.orange,
+                                          ),
+                                        );
+                                      }
+                                      return;
+                                    }
+
+                                    try {
+                                      await FirebaseAuth.instance
+                                          .sendPasswordResetEmail(email: email);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Password reset email sent',
+                                            ),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              'Failed to send reset email: $e',
+                                            ),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                ),
+                              ],
+                            );
                           },
                         ),
                       ],
