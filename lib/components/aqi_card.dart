@@ -147,6 +147,7 @@ class _PercentRing extends StatelessWidget {
             child: CircularProgressIndicator(
               value: percent.clamp(0.0, 1.0),
               strokeWidth: 7.5,
+              strokeCap: StrokeCap.round,
               backgroundColor: ringColor.withValues(alpha: 0.25),
               color: ringColor,
             ),
@@ -164,4 +165,3 @@ class _PercentRing extends StatelessWidget {
     );
   }
 }
-

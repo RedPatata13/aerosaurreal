@@ -2,16 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-
 import '../../dashboard/dashboard.dart';
 import '../../monitoring/monitoring.dart';
 import '../../insights/insights.dart';
 import '../../device_management/device_management.dart';
-import '../../settings/settings.dart';
-
 import '../../../models/device.dart';
 import '../../../components/navbar.dart';
-
 import 'home_header.dart';
 import 'no_device_content.dart';
 import '../dialogs/register_device_dialog.dart';

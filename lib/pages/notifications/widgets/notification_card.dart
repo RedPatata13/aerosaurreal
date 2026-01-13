@@ -8,7 +8,7 @@ class NotificationCard extends StatelessWidget {
   final String time;
   final IconData icon;
   final bool isRead;
-  final NotificationType type; // <-- new field
+  final NotificationType type;
 
   const NotificationCard({
     super.key,
@@ -17,14 +17,13 @@ class NotificationCard extends StatelessWidget {
     required this.time,
     required this.icon,
     required this.isRead,
-    required this.type, // required
+    required this.type,
   });
 
-  // Map notification type to color
   Color getIconColor(BuildContext context) {
     switch (type) {
       case NotificationType.warning:
-        return Colors.amber; // yellow
+        return Colors.amber;
       case NotificationType.alert:
         return Colors.red;
       case NotificationType.info:
@@ -49,13 +48,10 @@ class NotificationCard extends StatelessWidget {
             ? Colors.transparent
             : theme.colorScheme.primary.withOpacity(0.1),
         borderRadius: BorderRadius.circular(14),
-        border: isRead
-            ? Border.all(color: theme.dividerColor)
-            : null, // outline for read
+        border: isRead ? Border.all(color: theme.dividerColor) : null,
       ),
       child: Row(
         children: [
-          // Icon with dynamic color
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(

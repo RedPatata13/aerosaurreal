@@ -14,14 +14,6 @@ class FilledInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final textColor = isDark
-        ? const Color(0xFFF3F4F6)
-        : const Color(0xFF111827);
-    final hintColor = isDark
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF6B7280);
-    final baseFontSize = theme.textTheme.bodyMedium?.fontSize ?? 14;
 
     return Container(
       height: 40,
@@ -35,12 +27,12 @@ class FilledInput extends StatelessWidget {
         data: const TextSelectionThemeData(selectionColor: Colors.transparent),
         child: TextField(
           controller: controller,
-          cursorColor: textColor,
+          cursorColor: theme.colorScheme.onSurface,
           textAlignVertical: TextAlignVertical.center,
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: textColor,
+            color: theme.colorScheme.onSurface,
             fontWeight: FontWeight.w600,
-            fontSize: baseFontSize + 1,
+            fontSize: (theme.textTheme.bodyMedium?.fontSize ?? 14) + 1,
           ),
           decoration: InputDecoration(
             border: InputBorder.none,
@@ -50,9 +42,9 @@ class FilledInput extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             hintText: hint,
             hintStyle: theme.textTheme.bodyMedium?.copyWith(
-              color: hintColor,
-              fontWeight: FontWeight.w600,
-              fontSize: baseFontSize,
+              color: theme.hintColor ?? Colors.grey,
+              fontWeight: FontWeight.w400,
+              fontSize: theme.textTheme.bodyMedium?.fontSize ?? 14,
             ),
           ),
         ),

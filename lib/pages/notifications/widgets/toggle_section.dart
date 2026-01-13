@@ -20,7 +20,6 @@ class NotificationToggleSection extends StatelessWidget {
           final item = items[index];
           return Column(
             children: [
-              // Add vertical padding inside SwitchListTile
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: SwitchListTile(
@@ -31,7 +30,6 @@ class NotificationToggleSection extends StatelessWidget {
                 ),
               ),
 
-              // Only divider between Notifications and Alerts
               if (index == 0)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),

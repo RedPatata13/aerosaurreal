@@ -8,15 +8,17 @@ class RangeLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final color = isDark ? const Color(0xFFB9C0CB) : const Color(0xFF4B5563);
+    final theme = Theme.of(context);
+    final textColor =
+        theme.textTheme.bodySmall?.color?.withOpacity(0.7) ??
+        theme.colorScheme.onSurface.withOpacity(0.7);
 
     return Column(
       children: [
         Text(
           label,
           style: TextStyle(
-            color: color,
+            color: textColor,
             fontSize: 10,
             fontWeight: FontWeight.w700,
           ),
@@ -25,7 +27,7 @@ class RangeLabel extends StatelessWidget {
         Text(
           range,
           style: TextStyle(
-            color: color,
+            color: textColor,
             fontSize: 9,
             fontWeight: FontWeight.w600,
           ),

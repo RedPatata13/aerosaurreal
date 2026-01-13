@@ -9,6 +9,7 @@ class DeviceChip extends StatelessWidget {
   final VoidCallback onTogglePower;
 
   const DeviceChip({
+    super.key,
     required this.device,
     required this.color,
     required this.selected,
@@ -18,21 +19,19 @@ class DeviceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const selectedColor = Color(0xFF415A77);
-    final bg = selected ? selectedColor : color;
-    final borderColor = selected
-        ? Colors.white.withValues(alpha: 0.7)
-        : Colors.transparent;
-    final textColor = Colors.white;
-    final powerColor = device.isOn ? const Color(0xFF3AB54A) : textColor;
+    final theme = Theme.of(context);
 
     return Container(
       width: 186,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: bg,
+        color: selected ? theme.colorScheme.primary : color,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
+        border: Border.all(
+          color: selected
+              ? theme.colorScheme.onPrimary.withOpacity(0.7)
+              : Colors.transparent,
+        ),
       ),
       child: InkWell(
         onTap: onSelect,
@@ -46,8 +45,10 @@ class DeviceChip extends StatelessWidget {
                 onTap: onTogglePower,
                 borderRadius: BorderRadius.circular(12),
                 child: Icon(
-                  Icons.power_settings_new,
-                  color: powerColor,
+                  Icons.power_settings_new_rounded,
+                  color: device.isOn
+                      ? const Color(0xFF3AB54A)
+                      : theme.colorScheme.onPrimary,
                   size: 28,
                 ),
               ),
@@ -58,12 +59,13 @@ class DeviceChip extends StatelessWidget {
                 '${device.id}\n${device.name}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  height: 1.2,
-                ),
+                style: (theme.textTheme.bodyMedium ?? const TextStyle())
+                    .copyWith(
+                      color: theme.colorScheme.onPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      height: 1.2,
+                    ),
               ),
             ),
           ],

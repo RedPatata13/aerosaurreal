@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-
+import '/../../models/device.dart';
 import '/../components/aqi_card.dart';
 import '../home/dialogs/info_dialog.dart';
-import '/../models/device.dart';
 import 'widgets/monitoring_legend.dart';
 import 'widgets/metric_card.dart';
 import 'widgets/gas_card.dart';
@@ -15,19 +14,6 @@ class Monitoring extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final cardColor = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final borderColor = isDark
-        ? const Color(0xFF2B2F36)
-        : const Color(0xFFE5E7EB);
-    final titleColor = isDark
-        ? const Color(0xFFF3F4F6)
-        : const Color(0xFF111827);
-    final bodyColor = isDark
-        ? const Color(0xFFB9C0CB)
-        : const Color(0xFF4B5563);
-    final primary = isDark ? const Color(0xFF415A77) : const Color(0xFF1B263B);
 
     final titleMedium =
         theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
@@ -37,7 +23,7 @@ class Monitoring extends StatelessWidget {
     final sectionTitleStyle = titleMedium.copyWith(
       fontWeight: FontWeight.w700,
       fontSize: (titleMedium.fontSize ?? 16) + 1,
-      color: titleColor,
+      color: theme.colorScheme.onSurface,
     );
 
     return SingleChildScrollView(
@@ -46,14 +32,14 @@ class Monitoring extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           AqiCard(
-            background: primary,
+            background: theme.colorScheme.primary,
             titleStyle: titleMedium.copyWith(
-              color: Colors.white,
+              color: theme.colorScheme.onPrimary,
               fontWeight: FontWeight.w700,
               fontSize: (titleMedium.fontSize ?? 16) + 1,
             ),
             bodyStyle: bodyMedium.copyWith(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: theme.colorScheme.onPrimary.withOpacity(0.9),
             ),
             onInfo: () => showInfoDialog(
               context,
@@ -79,10 +65,10 @@ class Monitoring extends StatelessWidget {
             value: device.pm25,
             unit: 'µg/m³',
             subtitle: 'Fine Particles',
-            color: cardColor,
-            borderColor: borderColor,
-            titleColor: titleColor,
-            bodyColor: bodyColor,
+            color: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderColor: theme.dividerColor,
+            titleColor: theme.colorScheme.onSurface,
+            bodyColor: theme.colorScheme.onSurface.withOpacity(0.7),
             progress: 0.35,
             progressColor: const Color(0xFF3AB54A),
             onInfo: () => showInfoDialog(
@@ -99,10 +85,10 @@ class Monitoring extends StatelessWidget {
             value: device.pm10,
             unit: 'µg/m³',
             subtitle: 'Coarse Particles',
-            color: cardColor,
-            borderColor: borderColor,
-            titleColor: titleColor,
-            bodyColor: bodyColor,
+            color: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderColor: theme.dividerColor,
+            titleColor: theme.colorScheme.onSurface,
+            bodyColor: theme.colorScheme.onSurface.withOpacity(0.7),
             progress: 0.28,
             progressColor: const Color(0xFF3AB54A),
             onInfo: () => showInfoDialog(
@@ -119,10 +105,10 @@ class Monitoring extends StatelessWidget {
             value: device.voc,
             unit: 'ppm',
             subtitle: 'Air Pollutants',
-            color: cardColor,
-            borderColor: borderColor,
-            titleColor: titleColor,
-            bodyColor: bodyColor,
+            color: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderColor: theme.dividerColor,
+            titleColor: theme.colorScheme.onSurface,
+            bodyColor: theme.colorScheme.onSurface.withOpacity(0.7),
             progress: 0.18,
             progressColor: const Color(0xFF3AB54A),
             onInfo: () => showInfoDialog(
@@ -135,10 +121,10 @@ class Monitoring extends StatelessWidget {
 
           const SizedBox(height: 10),
           GasCard(
-            color: cardColor,
-            borderColor: borderColor,
-            titleColor: titleColor,
-            bodyColor: bodyColor,
+            color: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderColor: theme.dividerColor,
+            titleColor: theme.colorScheme.onSurface,
+            bodyColor: theme.colorScheme.onSurface.withOpacity(0.7),
           ),
         ],
       ),
