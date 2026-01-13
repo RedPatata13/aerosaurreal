@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class CustomBottomNav extends StatelessWidget {
   final int currentIndex;
-  final Function(int) onTap;
+  final ValueChanged<int> onTap;
 
   const CustomBottomNav({
     super.key,
@@ -10,22 +10,29 @@ class CustomBottomNav extends StatelessWidget {
     required this.onTap,
   });
 
+  static const int itemCount = 3;
+  static const double navHeight = 80;
+  static const double iconSize = 28;
+  static const double circleDiameter = 85;
+  static const double horizontalOverflow = 40;
+
   @override
   Widget build(BuildContext context) {
     final double width = MediaQuery.of(context).size.width;
-    final double horizontalPadding = 12 * 2;
-    final double itemWidth = (width - horizontalPadding) / 3;
-    final double circleDiameter = 85;
-    final double iconSize = 28;
+    final double itemWidth = (width) / itemCount;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+
+    double notchCenterForIndex(int index) {
+      return itemWidth * index + itemWidth / 2;
+    }
 
     final List<String> pageNames = ["Dashboard", "Monitoring", "Insights"];
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(
-        begin: 12 + currentIndex * itemWidth + (itemWidth / 2),
-        end: 12 + currentIndex * itemWidth + (itemWidth / 2),
+        begin: notchCenterForIndex(currentIndex),
+        end: notchCenterForIndex(currentIndex),
       ),
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -33,61 +40,115 @@ class CustomBottomNav extends StatelessWidget {
         return Stack(
           clipBehavior: Clip.none,
           children: [
-            ClipPath(
-              clipper: BottomNavClipper(
-                notchCenter: animatedNotchCenter,
-                notchRadius: circleDiameter / 2,
+            Positioned(
+              left: -horizontalOverflow,
+              right: -horizontalOverflow,
+              bottom: 0,
+              child: ClipPath(
+                clipper: BottomNavClipper(
+                  notchCenter: animatedNotchCenter + horizontalOverflow,
+                  notchRadius: circleDiameter / 2,
+                ),
+                child: Container(
+                  height: navHeight,
+                  decoration: BoxDecoration(
+                    color: colors.primary,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                ),
               ),
-              child: Container(height: 80, color: colors.primary),
             ),
 
+            /// Nav items
             SizedBox(
-              height: 80,
+              height: navHeight,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: List.generate(_icons.length, (index) {
+                children: List.generate(itemCount, (index) {
                   final bool isActive = index == currentIndex;
 
-                  return GestureDetector(
-                    onTap: () => onTap(index),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TweenAnimationBuilder<double>(
-                          tween: Tween<double>(
-                            begin: 0,
-                            end: isActive ? -20 : 0,
+                  return Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => onTap(index),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(
+                              begin: 0,
+                              end: isActive ? -20 : 0,
+                            ),
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            builder: (context, value, child) {
+                              return Transform.translate(
+                                offset: Offset(0, value),
+                                child: isActive
+                                    ? Container(
+                                        width: 60,
+                                        height: 60,
+                                        decoration: BoxDecoration(
+                                          color: theme.scaffoldBackgroundColor,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(
+                                                0.1,
+                                              ),
+                                              blurRadius: 8,
+                                              offset: Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Icon(
+                                          _icons[index],
+                                          size: iconSize,
+                                          color: colors.primary,
+                                        ),
+                                      )
+                                    : Icon(
+                                        _icons[index],
+                                        size: iconSize,
+                                        color: colors.onPrimary.withOpacity(
+                                          0.7,
+                                        ),
+                                      ),
+                              );
+                            },
                           ),
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                          builder: (context, value, child) {
-                            return Transform.translate(
-                              offset: Offset(0, value),
-                              child: Icon(
-                                _icons[index],
-                                size: iconSize,
-                                color: isActive
-                                    ? colors.primary
-                                    : colors.onPrimary.withOpacity(0.7),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 4),
-                        AnimatedOpacity(
-                          duration: const Duration(milliseconds: 300),
-                          opacity: isActive ? 1 : 0,
-                          child: isActive
-                              ? Text(
-                                  pageNames[index],
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: colors.onPrimary,
-                                    fontWeight: FontWeight.w500,
+                          const SizedBox(height: 4),
+
+                          TweenAnimationBuilder<double>(
+                            tween: Tween<double>(
+                              begin: 0,
+                              end: isActive ? -13 : 0,
+                            ),
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            builder: (context, value, child) {
+                              return Transform.translate(
+                                offset: Offset(0, value),
+                                child: AnimatedOpacity(
+                                  duration: const Duration(milliseconds: 300),
+                                  opacity: isActive ? 1 : 0.6,
+                                  child: Text(
+                                    pageNames[index],
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: isActive
+                                          ? colors.onPrimary
+                                          : colors.onPrimary.withOpacity(0.7),
+                                      fontWeight: isActive
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                    ),
                                   ),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                      ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   );
                 }),
@@ -119,32 +180,36 @@ class BottomNavClipper extends CustomClipper<Path> {
 
   @override
   Path getClip(Size size) {
-    final Path path = Path();
+    final path = Path();
+    const double notchDepth = 43;
+    final double notchHalfWidth = (notchRadius) * 1.25;
 
     path.moveTo(0, cornerRadius);
     path.quadraticBezierTo(0, 0, cornerRadius, 0);
 
-    path.lineTo(notchCenter - notchRadius - 10, 0);
-    path.quadraticBezierTo(
-      notchCenter - notchRadius,
+    path.lineTo(notchCenter - notchHalfWidth - 12, 0);
+
+    path.cubicTo(
+      notchCenter - notchHalfWidth * 0.75,
       0,
-      notchCenter - notchRadius + 5,
-      10,
+      notchCenter - notchHalfWidth * 0.75,
+      notchDepth,
+      notchCenter,
+      notchDepth,
     );
-    path.arcToPoint(
-      Offset(notchCenter + notchRadius - 5, 10),
-      radius: Radius.circular(notchRadius),
-      clockwise: false,
-    );
-    path.quadraticBezierTo(
-      notchCenter + notchRadius,
+
+    path.cubicTo(
+      notchCenter + notchHalfWidth * 0.75,
+      notchDepth,
+      notchCenter + notchHalfWidth * 0.75,
       0,
-      notchCenter + notchRadius + 10,
+      notchCenter + notchHalfWidth + 12,
       0,
     );
 
     path.lineTo(size.width - cornerRadius, 0);
     path.quadraticBezierTo(size.width, 0, size.width, cornerRadius);
+
     path.lineTo(size.width, size.height);
     path.lineTo(0, size.height);
     path.close();

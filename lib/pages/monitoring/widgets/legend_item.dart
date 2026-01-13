@@ -8,10 +8,7 @@ class LegendItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark
-        ? const Color(0xFFB9C0CB)
-        : const Color(0xFF4B5563);
+    final theme = Theme.of(context);
 
     return SizedBox(
       width: 140,
@@ -25,11 +22,17 @@ class LegendItem extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             label,
-            style: TextStyle(
-              color: textColor,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-            ),
+            style:
+                theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ) ??
+                TextStyle(
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
           ),
         ],
       ),

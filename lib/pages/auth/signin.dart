@@ -210,7 +210,6 @@ class _SignUpPageState extends State<SignUpPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Left: Login text link
                   TextButton(
                     onPressed: () => Navigator.of(context).pushNamed('/login'),
                     child: Text(
@@ -219,7 +218,6 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                   ),
 
-                  // Right: Sign Up button
                   SizedBox(
                     width: 120,
                     child: ElevatedButton(

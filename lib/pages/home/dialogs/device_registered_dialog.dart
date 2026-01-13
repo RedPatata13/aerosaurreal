@@ -54,24 +54,6 @@ class _DeviceRegisteredDialogState extends State<DeviceRegisteredDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    const navy = Color(0xFF1B263B);
-
-    final bodyMedium =
-        theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-
-    final dialogBg = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final titleColor = isDark
-        ? const Color(0xFFF3F4F6)
-        : const Color(0xFF111827);
-
-    final inputFill = isDark
-        ? const Color(0xFF3A3A3A)
-        : const Color(0xFFD9D9D9);
-    final inputBorder = isDark
-        ? const Color(0xFF4A4A4A)
-        : const Color(0xFFC8C8C8);
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -82,11 +64,11 @@ class _DeviceRegisteredDialogState extends State<DeviceRegisteredDialog> {
           height: 380,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: dialogBg,
+              color: theme.dialogBackgroundColor,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+              padding: const EdgeInsets.all(18),
               child: Column(
                 children: [
                   Row(
@@ -96,18 +78,19 @@ class _DeviceRegisteredDialogState extends State<DeviceRegisteredDialog> {
                         onPressed: _saving
                             ? null
                             : () => Navigator.of(context).pop(),
-                        icon: Icon(
-                          Icons.close,
-                          color: isDark ? Colors.white : null,
-                        ),
+                        icon: Icon(Icons.close, color: theme.iconTheme.color),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 30,
-                    backgroundColor: Color(0xFF2E7D32),
-                    child: Icon(Icons.check, color: Colors.white, size: 30),
+                    backgroundColor: theme.colorScheme.secondary,
+                    child: Icon(
+                      Icons.check,
+                      color: theme.colorScheme.onSecondary,
+                      size: 30,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -115,43 +98,52 @@ class _DeviceRegisteredDialogState extends State<DeviceRegisteredDialog> {
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: titleColor,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 18),
                   Container(
                     height: 44,
                     decoration: BoxDecoration(
-                      color: inputFill,
+                      color:
+                          theme.inputDecorationTheme.fillColor ??
+                          theme.cardColor,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: inputBorder),
+                      border: Border.all(color: theme.dividerColor),
                     ),
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     child: TextSelectionTheme(
                       data: TextSelectionThemeData(
-                        selectionColor: Colors.transparent,
-                        selectionHandleColor: isDark ? Colors.white : navy,
+                        selectionColor: theme.colorScheme.primary.withOpacity(
+                          0.3,
+                        ),
+                        selectionHandleColor: theme.colorScheme.primary,
                       ),
                       child: TextField(
                         controller: _nameController,
                         textAlign: TextAlign.center,
-                        cursorColor: isDark ? Colors.white : navy,
-                        style: bodyMedium.copyWith(
+                        cursorColor: theme.colorScheme.primary,
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          fontSize: (bodyMedium.fontSize ?? 14) - 1,
-                          color: isDark ? const Color(0xFFF3F4F6) : navy,
+                          fontSize:
+                              (theme.textTheme.bodyMedium?.fontSize ?? 14) - 1,
+                          color: theme.colorScheme.onSurface,
                         ),
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: inputFill,
+                          fillColor:
+                              theme.inputDecorationTheme.fillColor ??
+                              theme.cardColor,
                           border: InputBorder.none,
                           isDense: true,
                           hintText: 'Add Device Name (Optional)',
-                          hintStyle: bodyMedium.copyWith(
-                            color: const Color(0xFF9CA3AF),
+                          hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.hintColor,
                             fontWeight: FontWeight.w600,
-                            fontSize: (bodyMedium.fontSize ?? 14) - 1,
+                            fontSize:
+                                (theme.textTheme.bodyMedium?.fontSize ?? 14) -
+                                1,
                           ),
                         ),
                       ),
@@ -163,12 +155,10 @@ class _DeviceRegisteredDialogState extends State<DeviceRegisteredDialog> {
                     height: 44,
                     child: ElevatedButton(
                       onPressed: _saving ? null : _saveAndClose,
-                      style: isDark
-                          ? ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF415A77),
-                              foregroundColor: Colors.white,
-                            )
-                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                      ),
                       child: _saving
                           ? const SizedBox(
                               height: 22,

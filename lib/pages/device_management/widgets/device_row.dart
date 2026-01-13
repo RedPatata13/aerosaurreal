@@ -8,7 +8,6 @@ class DeviceRow extends StatelessWidget {
   final Color borderColor;
   final Color titleColor;
   final Color subtitleColor;
-  final Color cardBg;
 
   const DeviceRow({
     required this.title,
@@ -18,7 +17,6 @@ class DeviceRow extends StatelessWidget {
     required this.borderColor,
     required this.titleColor,
     required this.subtitleColor,
-    required this.cardBg,
   });
 
   @override
@@ -27,7 +25,6 @@ class DeviceRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
       decoration: BoxDecoration(
-        color: cardBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor),
       ),

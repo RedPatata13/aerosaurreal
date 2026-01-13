@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../settings/settings.dart';
 import '../../../platform/system_settings.dart';
 import 'top_icon_button.dart';
 import '../../../routes/routes.dart';
@@ -19,58 +18,67 @@ class HomeHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    const navy = Color(0xFF1B263B);
-    const slate = Color(0xFF415A77);
-    final titleColor = isDark
-        ? const Color(0xFFF3F4F6)
-        : const Color(0xFF111827);
-    final bodySmall =
-        theme.textTheme.bodySmall ?? const TextStyle(fontSize: 12);
-    final titleMedium =
-        theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
+
+    final routeName = ModalRoute.of(context)?.settings.name;
+    final isHome = routeName == AppRoutes.home;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 26, 18, 10),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: isDark
-                ? slate.withValues(alpha: 0.75)
-                : const Color(0xFFF2F4F7),
-            child: Icon(
-              Icons.person_outline,
-              color: isDark ? Colors.white : navy,
-              size: 26,
+          if (isHome) ...[
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: theme.primaryColor.withOpacity(0.75),
+              child: Icon(
+                Icons.person_outline,
+                color: theme.colorScheme.onPrimary,
+                size: 26,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Hello!',
-                  style: bodySmall.copyWith(
-                    color: isDark
-                        ? const Color(0xFF9CA3AF)
-                        : const Color(0xFF6B7280),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hello!',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
                   ),
-                ),
-                Text(
-                  username,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: titleMedium.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: (titleMedium.fontSize ?? 16) + 2,
-                    color: titleColor,
+                  Text(
+                    username,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize:
+                          (theme.textTheme.titleMedium?.fontSize ?? 16) + 2,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ] else ...[
+            IconButton(
+              padding: EdgeInsets.zero,
+              iconSize: 20,
+              icon: Icon(
+                Icons.arrow_back_ios_new_rounded,
+                size: 20,
+                color: iconColor,
+              ),
+              onPressed: () {
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+              },
+            ),
+            const Spacer(),
+          ],
+
           TopIconButton(
             onPressed: () async {
               try {
@@ -89,6 +97,7 @@ class HomeHeader extends StatelessWidget {
             color: iconColor,
           ),
           const SizedBox(width: 4),
+
           TopIconButton(
             onPressed: onRegisterDevice,
             icon: Icons.add,
@@ -96,6 +105,7 @@ class HomeHeader extends StatelessWidget {
             color: iconColor,
           ),
           const SizedBox(width: 4),
+
           TopIconButton(
             onPressed: () {
               Navigator.of(context).pushNamed(AppRoutes.notifications);
@@ -104,7 +114,6 @@ class HomeHeader extends StatelessWidget {
             tooltip: 'Notifications',
             color: iconColor,
           ),
-
           const SizedBox(width: 4),
 
           TopIconButton(

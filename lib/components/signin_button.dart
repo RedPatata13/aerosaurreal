@@ -2,11 +2,8 @@
 import "package:flutter/material.dart";
 
 class GoogleSignInButton extends StatelessWidget {
-  
   @override
   Widget build(BuildContext context) {
-    // TODO: implement build
-
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
@@ -18,10 +15,7 @@ class GoogleSignInButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        icon: Image.asset(
-          'images/google_logo.png',
-          height: 20,
-        ),
+        icon: Image.asset('images/google_logo.png', height: 20),
         onPressed: () {
           // _handleSignIn();
         },

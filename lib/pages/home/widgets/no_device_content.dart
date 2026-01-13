@@ -13,37 +13,17 @@ class NoDeviceContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    const navy = Color(0xFF1B263B);
-    const slate = Color(0xFF415A77);
-    const danger = Color(0xFFC53A3A);
-    final cardBg = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final cardBorder = isDark
-        ? const Color(0xFF2B2F36)
-        : const Color(0xFFD1D5DB);
-    final titleColor = isDark
-        ? const Color(0xFFF3F4F6)
-        : const Color(0xFF111827);
-    final bodyColor = isDark
-        ? const Color(0xFFB9C0CB)
-        : const Color(0xFF4B5563);
-    final primaryButton = isDark ? slate : navy;
-    final bodyMedium =
-        theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-    final titleMedium =
-        theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 0, 18, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Column(
         children: [
           Container(
             decoration: BoxDecoration(
-              color: cardBg,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: cardBorder, width: 1.2),
-              boxShadow: isDark
-                  ? const []
+              border: Border.all(color: theme.dividerColor, width: 1.2),
+              boxShadow: theme.brightness == Brightness.dark
+                  ? null
                   : const [
                       BoxShadow(
                         color: Color(0x11000000),
@@ -60,16 +40,19 @@ class NoDeviceContent extends StatelessWidget {
                   Text(
                     'No devices registered on your account.',
                     textAlign: TextAlign.center,
-                    style: titleMedium.copyWith(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: titleColor,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 14),
                   Text(
                     "It appears you don't have any devices registered. Register your device now!",
                     textAlign: TextAlign.center,
-                    style: bodyMedium.copyWith(color: bodyColor, height: 1.5),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      height: 1.5,
+                    ),
                   ),
                   const SizedBox(height: 18),
                 ],
@@ -92,12 +75,14 @@ class NoDeviceContent extends StatelessWidget {
                         icon: const Icon(Icons.link, size: 18),
                         label: const Text('Register new device'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryButton,
-                          foregroundColor: Colors.white,
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
                           padding: const EdgeInsets.symmetric(horizontal: 14),
-                          textStyle: bodyMedium.copyWith(
+                          textStyle: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
-                            fontSize: (bodyMedium.fontSize ?? 14) - 1,
+                            fontSize:
+                                (theme.textTheme.bodyMedium?.fontSize ?? 14) -
+                                1,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -115,12 +100,13 @@ class NoDeviceContent extends StatelessWidget {
                       icon: const Icon(Icons.logout, size: 18),
                       label: const Text('Logout'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: danger,
-                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.red,
+                        foregroundColor: theme.colorScheme.onPrimary,
                         padding: const EdgeInsets.symmetric(horizontal: 14),
-                        textStyle: bodyMedium.copyWith(
+                        textStyle: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          fontSize: (bodyMedium.fontSize ?? 14) - 1,
+                          fontSize:
+                              (theme.textTheme.bodyMedium?.fontSize ?? 14) - 1,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),

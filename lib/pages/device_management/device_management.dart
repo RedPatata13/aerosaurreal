@@ -1,12 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '/../models/device.dart';
-import '/../components/topnavbar.dart';
 import '/../enum/active_icon.dart';
 import 'widgets/filled_input.dart';
 import 'widgets/device_row.dart';
 import 'widgets/dialog_button.dart';
+import './../home/widgets/home_header.dart';
 
 class DeviceManagementPage extends StatefulWidget {
   final String uid;
@@ -36,79 +37,75 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     super.dispose();
   }
 
+  List<Device> devicesState = [];
+  int selectedDeviceIndex = 0;
+
+  void _showRegisterDeviceDialog(String uid) {
+    showDialog(
+      context: context,
+      builder: (_) => DeviceManagementPage(
+        uid: uid,
+        devices: devicesState,
+        onDevicesChanged: (next) {
+          setState(() {
+            devicesState = next;
+            if (selectedDeviceIndex >= next.length) selectedDeviceIndex = 0;
+          });
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final titleMedium =
-        theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
-    final bodyMedium =
-        theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-
-    final pageBg = isDark ? const Color(0xFF0B1220) : const Color(0xFFF5F6F7);
-    final cardBg = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final borderColor = isDark
-        ? const Color(0xFF2B2F36)
-        : const Color(0xFFE5E7EB);
-    final titleColor = isDark
-        ? const Color(0xFFF3F4F6)
-        : const Color(0xFF111827);
-    final labelColor = isDark
-        ? const Color(0xFFB9C0CB)
-        : const Color(0xFF374151);
-    final inputFill = isDark
-        ? const Color(0xFF2B2F36)
-        : const Color(0xFFD9D9D9);
-    final danger = const Color(0xFFB42318);
+    final user = FirebaseAuth.instance.currentUser;
+    final username = user?.displayName ?? 'User';
+    final uid = user?.uid;
 
     return Scaffold(
-      backgroundColor: pageBg,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
-          child: Column(
-            children: [
-              TopNavbar(
-                iconColor: isDark ? Colors.white : const Color(0xFF111827),
-                onBack: () => Navigator.pop(context),
-                activeAdd: false,
-                activeIcon: TopNavActiveIcon.none,
-                onAdd: () {},
-                onNotifications: () {},
-                onSettings: () {
-                  Navigator.pushNamed(context, 'settings.dart');
-                },
-              ),
-              const SizedBox(height: 12),
-              Expanded(
+        child: Column(
+          children: [
+            HomeHeader(
+              username: username,
+              iconColor: theme.colorScheme.onSurface,
+              onRegisterDevice: () {
+                if (uid == null) return;
+                _showRegisterDeviceDialog(uid);
+              },
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
                 child: SingleChildScrollView(
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
                     decoration: BoxDecoration(
-                      color: cardBg,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: borderColor),
+                      border: Border.all(color: theme.dividerColor),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Device Management',
-                          style: titleMedium.copyWith(
-                            color: titleColor,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style:
+                              (theme.textTheme.titleMedium ?? const TextStyle())
+                                  .copyWith(fontWeight: FontWeight.w700),
                         ),
                         const SizedBox(height: 14),
                         Text(
                           'Register new Device',
-                          style: bodyMedium.copyWith(
-                            color: labelColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: (bodyMedium.fontSize ?? 14) - 2,
-                          ),
+                          style:
+                              (theme.textTheme.bodyMedium ?? const TextStyle())
+                                  .copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -116,7 +113,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                             Expanded(
                               child: FilledInput(
                                 controller: _deviceIdController,
-                                fill: inputFill,
+                                fill: theme.inputDecorationTheme.fillColor!,
                                 hint: 'Enter Device ID (e.g 2024-AVXXXXXX)',
                               ),
                             ),
@@ -136,16 +133,19 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                                         }
                                         FocusScope.of(context).requestFocus();
                                       },
-                                style: ElevatedButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  backgroundColor: isDark
-                                      ? const Color(0xFF415A77)
-                                      : const Color(0xFF1B263B),
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
+                                style: theme.elevatedButtonTheme.style
+                                    ?.copyWith(
+                                      padding: MaterialStateProperty.all(
+                                        EdgeInsets.zero,
+                                      ),
+                                      shape: MaterialStateProperty.all(
+                                        RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                 child: const Icon(Icons.add, size: 20),
                               ),
                             ),
@@ -154,19 +154,20 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                         const SizedBox(height: 8),
                         FilledInput(
                           controller: _deviceNameController,
-                          fill: inputFill,
+                          fill: theme.inputDecorationTheme.fillColor!,
                           hint: 'Enter Name Device',
                         ),
                         const SizedBox(height: 14),
-                        Divider(color: borderColor, height: 1),
+                        Divider(color: theme.dividerColor, height: 1),
                         const SizedBox(height: 14),
                         Text(
                           'Registered Devices',
-                          style: bodyMedium.copyWith(
-                            color: labelColor,
-                            fontWeight: FontWeight.w700,
-                            fontSize: (bodyMedium.fontSize ?? 14) - 2,
-                          ),
+                          style:
+                              (theme.textTheme.bodyMedium ?? const TextStyle())
+                                  .copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
                         ),
                         const SizedBox(height: 10),
                         for (final device in widget.devices) ...[
@@ -176,13 +177,12 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                             onDelete: _saving
                                 ? null
                                 : () => _confirmDelete(device.id),
-                            danger: danger,
-                            borderColor: borderColor,
-                            titleColor: titleColor,
-                            subtitleColor: isDark
-                                ? const Color(0xFFB9C0CB)
-                                : const Color(0xFF6B7280),
-                            cardBg: cardBg,
+                            danger: Colors.red,
+                            borderColor: theme.dividerColor,
+                            titleColor: theme.colorScheme.onSurface,
+                            subtitleColor:
+                                theme.textTheme.bodyMedium?.color ??
+                                theme.colorScheme.onSurface,
                           ),
                           const SizedBox(height: 10),
                         ],
@@ -191,8 +191,8 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -235,16 +235,6 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
 
   Future<void> _confirmDelete(String deviceId) async {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final dialogBg = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final borderColor = isDark
-        ? const Color(0xFF2B2F36)
-        : const Color(0xFFE5E7EB);
-    final titleColor = isDark
-        ? const Color(0xFFF3F4F6)
-        : const Color(0xFF111827);
-    final danger = const Color(0xFFB42318);
-
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
@@ -255,9 +245,9 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
             width: 340,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: dialogBg,
+              color: theme.cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderColor),
+              border: Border.all(color: theme.dividerColor),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -266,7 +256,6 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                   'Are you sure you want to\nremove this device?',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: titleColor,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -279,8 +268,8 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                         label: 'Back',
                         onPressed: () => Navigator.of(context).pop(false),
                         primary: false,
-                        borderColor: borderColor,
-                        foreground: titleColor,
+                        borderColor: theme.dividerColor,
+                        foreground: theme.colorScheme.onSurface,
                         background: null,
                       ),
                     ),
@@ -290,9 +279,9 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                         label: 'Confirm',
                         onPressed: () => Navigator.of(context).pop(true),
                         primary: true,
-                        borderColor: borderColor,
+                        borderColor: theme.dividerColor,
                         foreground: Colors.white,
-                        background: danger,
+                        background: Colors.red,
                       ),
                     ),
                   ],

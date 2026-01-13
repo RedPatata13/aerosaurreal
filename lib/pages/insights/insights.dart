@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '/../models/device.dart';
+import '/../../models/device.dart';
 import 'insight_card.dart';
 import 'charts/dual_bar_chart.dart';
 import 'charts/single_bar_chart.dart';
@@ -17,32 +16,34 @@ class Insights extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
-    final titleColor = isDark
-        ? const Color(0xFFF3F4F6)
-        : const Color(0xFF111827);
-    final bodyColor = isDark
-        ? const Color(0xFFB9C0CB)
-        : const Color(0xFF4B5563);
-    final cardColor = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final borderColor = isDark
-        ? const Color(0xFF2B2F36)
-        : const Color(0xFFE5E7EB);
+    final titleStyle =
+        theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) + 1,
+          color: theme.colorScheme.onSurface,
+        ) ??
+        TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 17,
+          color: theme.colorScheme.onSurface,
+        );
+
+    final bodyStyle =
+        theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: theme.colorScheme.onSurface.withOpacity(0.7),
+        ) ??
+        TextStyle(
+          fontWeight: FontWeight.w600,
+          color: theme.colorScheme.onSurface.withOpacity(0.7),
+        );
+
+    final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
+    final borderColor = theme.dividerColor;
 
     const graphPrimary = Color(0xFF415A77);
     const graphSecondary = Color(0xFFA8AFBA);
-
-    final titleMedium =
-        theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
-    final bodyMedium =
-        theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-
-    final sectionTitleStyle = titleMedium.copyWith(
-      fontWeight: FontWeight.w700,
-      fontSize: (titleMedium.fontSize ?? 16) + 1,
-      color: titleColor,
-    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
@@ -52,7 +53,7 @@ class Insights extends StatelessWidget {
             title: 'Air Quality Index Trend',
             color: cardColor,
             borderColor: borderColor,
-            titleStyle: sectionTitleStyle,
+            titleStyle: titleStyle,
             child: Column(
               children: [
                 const SizedBox(height: 6),
@@ -61,23 +62,11 @@ class Insights extends StatelessWidget {
                   children: [
                     const LegendDot(color: graphSecondary),
                     const SizedBox(width: 6),
-                    Text(
-                      'Peak AQI',
-                      style: bodyMedium.copyWith(
-                        color: bodyColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    Text('Peak AQI', style: bodyStyle),
                     const SizedBox(width: 16),
                     const LegendDot(color: graphPrimary),
                     const SizedBox(width: 6),
-                    Text(
-                      'Average AQI',
-                      style: bodyMedium.copyWith(
-                        color: bodyColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    Text('Average AQI', style: bodyStyle),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -117,7 +106,7 @@ class Insights extends StatelessWidget {
             title: 'Purifier Usage - Over 7 Days',
             color: cardColor,
             borderColor: borderColor,
-            titleStyle: sectionTitleStyle,
+            titleStyle: titleStyle,
             child: Column(
               children: [
                 const SizedBox(height: 10),
@@ -134,21 +123,17 @@ class Insights extends StatelessWidget {
                     StatPill(
                       label: 'Total Usage',
                       value: '${device.totalUsageHours7d.toStringAsFixed(1)}h',
-                      background: isDark
-                          ? const Color(0xFF2B2F36)
-                          : const Color(0xFFF3F4F6),
-                      textColor: titleColor,
-                      subColor: bodyColor,
+                      background: cardColor,
+                      textColor: theme.colorScheme.onSurface,
+                      subColor: theme.colorScheme.onSurface.withOpacity(0.7),
                     ),
                     const SizedBox(width: 10),
                     StatPill(
                       label: 'Daily Usage',
                       value: '${device.dailyUsageHours.toStringAsFixed(1)}h',
-                      background: isDark
-                          ? const Color(0xFF2B2F36)
-                          : const Color(0xFFF3F4F6),
-                      textColor: titleColor,
-                      subColor: bodyColor,
+                      background: cardColor,
+                      textColor: theme.colorScheme.onSurface,
+                      subColor: theme.colorScheme.onSurface.withOpacity(0.7),
                     ),
                   ],
                 ),
@@ -166,10 +151,7 @@ class Insights extends StatelessWidget {
             caption: device.aqiLabel == 'Moderate'
                 ? 'Time in Moderate AQI today'
                 : 'Time in Good AQI today',
-            captionStyle: bodyMedium.copyWith(
-              color: bodyColor,
-              fontWeight: FontWeight.w600,
-            ),
+            captionStyle: bodyStyle,
           ),
           const SizedBox(height: 10),
           SimpleStatCard(
@@ -178,10 +160,7 @@ class Insights extends StatelessWidget {
             valueText: device.directHoursToday.toStringAsFixed(1),
             valueColor: const Color(0xFF3B82F6),
             caption: 'Direct Hours',
-            captionStyle: bodyMedium.copyWith(
-              color: bodyColor,
-              fontWeight: FontWeight.w600,
-            ),
+            captionStyle: bodyStyle,
           ),
           const SizedBox(height: 10),
           SimpleStatCard(
@@ -190,10 +169,7 @@ class Insights extends StatelessWidget {
             valueText: '${device.energySavedPercent}%',
             valueColor: const Color(0xFF8B5CF6),
             caption: 'Energy saved (Smart Mode)',
-            captionStyle: bodyMedium.copyWith(
-              color: bodyColor,
-              fontWeight: FontWeight.w600,
-            ),
+            captionStyle: bodyStyle,
           ),
         ],
       ),

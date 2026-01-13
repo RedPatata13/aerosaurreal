@@ -25,62 +25,26 @@ class Dashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     if (devices.isEmpty) return const SizedBox.shrink();
 
-    final safeIndex = selectedDeviceIndex.clamp(0, devices.length - 1);
-    final selectedDevice = devices[safeIndex];
+    final selectedDevice =
+        devices[selectedDeviceIndex.clamp(0, devices.length - 1)];
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    final cardColor = isDark ? const Color(0xFF1F2228) : Colors.white;
-    final surfaceColor = isDark
-        ? const Color(0xFF1F2228)
-        : const Color(0xFFF3F4F6);
-    final borderColor = isDark
-        ? const Color(0xFF2B2F36)
-        : const Color(0xFFE5E7EB);
-    final titleColor = isDark
-        ? const Color(0xFFF3F4F6)
-        : const Color(0xFF111827);
-    final bodyColor = isDark
-        ? const Color(0xFFB9C0CB)
-        : const Color(0xFF4B5563);
-    final primary = isDark ? const Color(0xFF415A77) : const Color(0xFF1B263B);
-
-    final deviceChipBaseColor = isDark ? const Color(0xFF1B263B) : primary;
-    final fanInactiveFill = const Color(0xFF1B263B);
-    final fanActiveColor = const Color(0xFF415A77);
-    final fanInactiveTextColor = isDark
-        ? bodyColor
-        : Colors.white.withValues(alpha: 0.95);
-
-    // 🖋 Text styles
-    final titleMedium =
-        theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
-    final bodyMedium =
-        theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-
-    final sectionTitleStyle = titleMedium.copyWith(
-      fontWeight: FontWeight.w700,
-      fontSize: (titleMedium.fontSize ?? 16) + 1,
-      color: titleColor,
-    );
-
-    final cardTitleStyle = titleMedium.copyWith(
-      color: Colors.white,
-      fontWeight: FontWeight.w700,
-      fontSize: (titleMedium.fontSize ?? 16) + 1,
-    );
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // AQI Card
           AqiCard(
-            background: primary,
-            titleStyle: cardTitleStyle,
-            bodyStyle: bodyMedium.copyWith(
-              color: Colors.white.withValues(alpha: 0.9),
-            ),
+            background: theme.colorScheme.primary,
+            titleStyle: (theme.textTheme.titleMedium ?? const TextStyle())
+                .copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) + 1,
+                  color: theme.colorScheme.onPrimary,
+                ),
+            bodyStyle: (theme.textTheme.bodyMedium ?? const TextStyle())
+                .copyWith(color: theme.colorScheme.onPrimary.withOpacity(0.9)),
             onInfo: () {
               showInfoDialog(
                 context,
@@ -97,7 +61,14 @@ class Dashboard extends StatelessWidget {
           ),
 
           const SizedBox(height: 16),
-          Text('Current Devices', style: sectionTitleStyle),
+          Text(
+            'Current Devices',
+            style: (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) + 1,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
           const SizedBox(height: 10),
 
           SizedBox(
@@ -110,12 +81,11 @@ class Dashboard extends StatelessWidget {
                 final device = devices[index];
                 return DeviceChip(
                   device: device,
-                  selected: index == safeIndex,
-                  color: deviceChipBaseColor,
+                  selected: index == selectedDeviceIndex,
+                  color: theme.colorScheme.primary,
                   onSelect: () => onSelectDevice(index),
-                  onTogglePower: () {
-                    onUpdateDevice(device.copyWith(isOn: !device.isOn));
-                  },
+                  onTogglePower: () =>
+                      onUpdateDevice(device.copyWith(isOn: !device.isOn)),
                 );
               },
             ),
@@ -123,41 +93,46 @@ class Dashboard extends StatelessWidget {
 
           const SizedBox(height: 16),
           SectionCard(
-            cardColor: cardColor,
-            borderColor: borderColor,
+            cardColor: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderColor: theme.dividerColor,
             child: Column(
               children: [
                 ToggleRow(
                   label: 'Smart Mode',
                   value: selectedDevice.smartMode,
-                  labelStyle: bodyMedium.copyWith(
-                    color: titleColor,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  labelStyle: (theme.textTheme.bodyMedium ?? const TextStyle())
+                      .copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
                   onChanged: (value) =>
                       onUpdateDevice(selectedDevice.copyWith(smartMode: value)),
                 ),
-                Divider(color: borderColor, height: 18),
+                Divider(color: theme.dividerColor, height: 18),
                 if (selectedDevice.smartMode) ...[
                   ToggleRow(
                     label: 'Auto adjust fan speed',
                     value: selectedDevice.autoAdjustFanSpeed,
-                    labelStyle: bodyMedium.copyWith(
-                      color: titleColor,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    labelStyle:
+                        (theme.textTheme.bodyMedium ?? const TextStyle())
+                            .copyWith(
+                              color: theme.colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
                     onChanged: (value) => onUpdateDevice(
                       selectedDevice.copyWith(autoAdjustFanSpeed: value),
                     ),
                   ),
-                  Divider(color: borderColor, height: 18),
+                  Divider(color: theme.dividerColor, height: 18),
                   ToggleRow(
                     label: 'Turn off automatically',
                     value: selectedDevice.turnOffAutomatically,
-                    labelStyle: bodyMedium.copyWith(
-                      color: titleColor,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    labelStyle:
+                        (theme.textTheme.bodyMedium ?? const TextStyle())
+                            .copyWith(
+                              color: theme.colorScheme.onSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
                     onChanged: (value) => onUpdateDevice(
                       selectedDevice.copyWith(turnOffAutomatically: value),
                     ),
@@ -168,23 +143,34 @@ class Dashboard extends StatelessWidget {
           ),
 
           const SizedBox(height: 14),
-          Text('Fan Speed', style: sectionTitleStyle),
+          Text(
+            'Fan Speed',
+            style: (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) + 1,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
           const SizedBox(height: 10),
 
           SectionCard(
-            cardColor: cardColor,
-            borderColor: borderColor,
+            cardColor: theme.cardTheme.color ?? theme.colorScheme.surface,
+            borderColor: theme.dividerColor,
             child: FanSpeedSelector(
               value: selectedDevice.fanSpeed,
               onChanged: (value) =>
                   onUpdateDevice(selectedDevice.copyWith(fanSpeed: value)),
-              surfaceColor: surfaceColor,
-              borderColor: borderColor,
-              activeColor: fanActiveColor,
-              inactiveFill: fanInactiveFill,
-              inactiveTextColor: fanInactiveTextColor,
-              activeTextColor: Colors.white,
-              textStyle: bodyMedium.copyWith(fontWeight: FontWeight.w600),
+              surfaceColor: theme.colorScheme.surface,
+              borderColor: theme.dividerColor,
+              activeColor: theme.colorScheme.primary,
+              inactiveFill: theme.colorScheme.primary.withOpacity(0.1),
+              inactiveTextColor:
+                  (theme.textTheme.bodyMedium ?? const TextStyle()).color
+                      ?.withOpacity(0.7) ??
+                  theme.colorScheme.onSurface.withOpacity(0.7),
+              activeTextColor: theme.colorScheme.onPrimary,
+              textStyle: (theme.textTheme.bodyMedium ?? const TextStyle())
+                  .copyWith(fontWeight: FontWeight.w600),
             ),
           ),
         ],
