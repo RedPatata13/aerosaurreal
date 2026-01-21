@@ -56,6 +56,14 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     );
   }
 
+  Future<void> _refreshDevices() async {
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    setState(() {
+      //re-fetch devics
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -80,113 +88,119 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                child: SingleChildScrollView(
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: theme.dividerColor),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Device Management',
-                          style:
-                              (theme.textTheme.titleMedium ?? const TextStyle())
-                                  .copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Register new Device',
-                          style:
-                              (theme.textTheme.bodyMedium ?? const TextStyle())
-                                  .copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: FilledInput(
-                                controller: _deviceIdController,
-                                fill: theme.inputDecorationTheme.fillColor!,
-                                hint: 'Enter Device ID (e.g 2024-AVXXXXXX)',
+                child: RefreshIndicator(
+                  onRefresh: _refreshDevices,
+                  child: SingleChildScrollView(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: theme.dividerColor),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Device Management',
+                            style:
+                                (theme.textTheme.titleMedium ??
+                                        const TextStyle())
+                                    .copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'Register new Device',
+                            style:
+                                (theme.textTheme.bodyMedium ??
+                                        const TextStyle())
+                                    .copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FilledInput(
+                                  controller: _deviceIdController,
+                                  fill: theme.inputDecorationTheme.fillColor!,
+                                  hint: 'Enter Device ID (e.g 2024-AVXXXXXX)',
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            SizedBox(
-                              width: 40,
-                              height: 40,
-                              child: ElevatedButton(
-                                onPressed: _saving
-                                    ? null
-                                    : () {
-                                        final id = _deviceIdController.text
-                                            .trim();
-                                        if (id.isNotEmpty) {
-                                          _submitNewDevice();
-                                          return;
-                                        }
-                                        FocusScope.of(context).requestFocus();
-                                      },
-                                style: theme.elevatedButtonTheme.style
-                                    ?.copyWith(
-                                      padding: MaterialStateProperty.all(
-                                        EdgeInsets.zero,
-                                      ),
-                                      shape: MaterialStateProperty.all(
-                                        RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: ElevatedButton(
+                                  onPressed: _saving
+                                      ? null
+                                      : () {
+                                          final id = _deviceIdController.text
+                                              .trim();
+                                          if (id.isNotEmpty) {
+                                            _submitNewDevice();
+                                            return;
+                                          }
+                                          FocusScope.of(context).requestFocus();
+                                        },
+                                  style: theme.elevatedButtonTheme.style
+                                      ?.copyWith(
+                                        padding: MaterialStateProperty.all(
+                                          EdgeInsets.zero,
+                                        ),
+                                        shape: MaterialStateProperty.all(
+                                          RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                child: const Icon(Icons.add, size: 20),
+                                  child: const Icon(Icons.add, size: 20),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        FilledInput(
-                          controller: _deviceNameController,
-                          fill: theme.inputDecorationTheme.fillColor!,
-                          hint: 'Enter Name Device',
-                        ),
-                        const SizedBox(height: 14),
-                        Divider(color: theme.dividerColor, height: 1),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Registered Devices',
-                          style:
-                              (theme.textTheme.bodyMedium ?? const TextStyle())
-                                  .copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                        ),
-                        const SizedBox(height: 10),
-                        for (final device in widget.devices) ...[
-                          DeviceRow(
-                            title: device.name,
-                            subtitle: 'ID: 2024-${device.id}',
-                            onDelete: _saving
-                                ? null
-                                : () => _confirmDelete(device.id),
-                            danger: Colors.red,
-                            borderColor: theme.dividerColor,
-                            titleColor: theme.colorScheme.onSurface,
-                            subtitleColor:
-                                theme.textTheme.bodyMedium?.color ??
-                                theme.colorScheme.onSurface,
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          FilledInput(
+                            controller: _deviceNameController,
+                            fill: theme.inputDecorationTheme.fillColor!,
+                            hint: 'Enter Name Device',
+                          ),
+                          const SizedBox(height: 14),
+                          Divider(color: theme.dividerColor, height: 1),
+                          const SizedBox(height: 14),
+                          Text(
+                            'Registered Devices',
+                            style:
+                                (theme.textTheme.bodyMedium ??
+                                        const TextStyle())
+                                    .copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
                           ),
                           const SizedBox(height: 10),
+                          for (final device in widget.devices) ...[
+                            DeviceRow(
+                              title: device.name,
+                              subtitle: 'ID: 2024-${device.id}',
+                              onDelete: _saving
+                                  ? null
+                                  : () => _confirmDelete(device.id),
+                              danger: Colors.red,
+                              borderColor: theme.dividerColor,
+                              titleColor: theme.colorScheme.onSurface,
+                              subtitleColor:
+                                  theme.textTheme.bodyMedium?.color ??
+                                  theme.colorScheme.onSurface,
+                            ),
+                            const SizedBox(height: 10),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),

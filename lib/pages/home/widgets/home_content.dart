@@ -32,6 +32,14 @@ class _HomeContentState extends State<HomeContent> {
     {'id': 'AV503', 'name': 'Room 303'},
   ];
 
+  Future<void> _refreshCurrentTab() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    setState(() {
+      //re-fetch data
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -215,15 +223,22 @@ class _HomeContentState extends State<HomeContent> {
                                         .toList(growable: false);
                                   });
                                 },
+                                onRefresh: _refreshCurrentTab,
                               )
                             else
                               const SizedBox.shrink(),
                             if (selectedDevice != null)
-                              Monitoring(device: selectedDevice)
+                              Monitoring(
+                                device: selectedDevice,
+                                onRefresh: _refreshCurrentTab,
+                              )
                             else
                               const SizedBox.shrink(),
                             if (selectedDevice != null)
-                              Insights(device: selectedDevice)
+                              Insights(
+                                device: selectedDevice,
+                                onRefresh: _refreshCurrentTab,
+                              )
                             else
                               const SizedBox.shrink(),
                           ],

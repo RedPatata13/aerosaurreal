@@ -73,6 +73,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
+  Future<void> _refreshNotifications() async {
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    setState(() {
+      // re-fecth notifs
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -95,140 +103,153 @@ class _NotificationsPageState extends State<NotificationsPage> {
             const SizedBox(height: 16),
 
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    NotificationToggleSection(
-                      items: [
-                        NotificationToggleItem(
-                          label: "Notifications",
-                          value: notifications,
-                          onChanged: (v) => setState(() => notifications = v),
-                        ),
-                        if (notifications) ...[
+              child: RefreshIndicator(
+                onRefresh: _refreshNotifications,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Column(
+                    children: [
+                      NotificationToggleSection(
+                        items: [
                           NotificationToggleItem(
-                            label: "Alerts",
-                            value: alerts,
-                            onChanged: (v) => setState(() => alerts = v),
+                            label: "Notifications",
+                            value: notifications,
+                            onChanged: (v) => setState(() => notifications = v),
                           ),
-                          NotificationToggleItem(
-                            label: "Smart Mode Changes",
-                            value: smartModeChanges,
-                            onChanged: (v) =>
-                                setState(() => smartModeChanges = v),
-                          ),
-                          NotificationToggleItem(
-                            label: "Energy Usage",
-                            value: energyUsage,
-                            onChanged: (v) => setState(() => energyUsage = v),
-                          ),
+                          if (notifications) ...[
+                            NotificationToggleItem(
+                              label: "Alerts",
+                              value: alerts,
+                              onChanged: (v) => setState(() => alerts = v),
+                            ),
+                            NotificationToggleItem(
+                              label: "Smart Mode Changes",
+                              value: smartModeChanges,
+                              onChanged: (v) =>
+                                  setState(() => smartModeChanges = v),
+                            ),
+                            NotificationToggleItem(
+                              label: "Energy Usage",
+                              value: energyUsage,
+                              onChanged: (v) => setState(() => energyUsage = v),
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
+                      ),
 
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 12),
 
-                    if (notifications)
-                      Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: theme.dividerColor),
-                        ),
-                        elevation: 0,
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Notification History',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                      if (notifications)
+                        Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: theme.dividerColor),
+                          ),
+                          elevation: 0,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Notification History',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 8),
+                                const SizedBox(height: 8),
 
-                              Row(
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        for (var item in notificationItems) {
-                                          item['isRead'] = true;
-                                        }
-                                      });
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: theme.primaryColor,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 4,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      textStyle: const TextStyle(fontSize: 12),
-                                    ),
-                                    child: const Text('Mark all as read'),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      setState(() => notificationItems.clear());
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 4,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(14),
-                                      ),
-                                      textStyle: const TextStyle(fontSize: 12),
-                                    ),
-                                    child: const Text('Clear All'),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-
-                              if (notificationItems.isEmpty)
-                                Center(
-                                  child: Text(
-                                    "No notifications",
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                )
-                              else
-                                Column(
-                                  children: notificationItems
-                                      .map(
-                                        (item) => Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 6.0,
-                                          ),
-                                          child: NotificationCard(
-                                            title: item['title'],
-                                            message: item['message'],
-                                            time: item['time'],
-                                            icon: item['icon'],
-                                            isRead: item['isRead'] ?? false,
-                                            type: item['type'],
+                                Row(
+                                  children: [
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        setState(() {
+                                          for (var item in notificationItems) {
+                                            item['isRead'] = true;
+                                          }
+                                        });
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: theme.primaryColor,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 4,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
                                           ),
                                         ),
-                                      )
-                                      .toList(),
+                                        textStyle: const TextStyle(
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      child: const Text('Mark all as read'),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        setState(
+                                          () => notificationItems.clear(),
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 4,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        textStyle: const TextStyle(
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      child: const Text('Clear All'),
+                                    ),
+                                  ],
                                 ),
-                            ],
+                                const SizedBox(height: 12),
+
+                                if (notificationItems.isEmpty)
+                                  Center(
+                                    child: Text(
+                                      "No notifications",
+                                      style: theme.textTheme.bodyMedium,
+                                    ),
+                                  )
+                                else
+                                  Column(
+                                    children: notificationItems
+                                        .map(
+                                          (item) => Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 6.0,
+                                            ),
+                                            child: NotificationCard(
+                                              title: item['title'],
+                                              message: item['message'],
+                                              time: item['time'],
+                                              icon: item['icon'],
+                                              isRead: item['isRead'] ?? false,
+                                              type: item['type'],
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
