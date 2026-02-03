@@ -10,50 +10,32 @@ class UpdateEmailDialog extends StatefulWidget {
 
 class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
-
-  int _step = 0;
 
   @override
   void initState() {
     super.initState();
     _emailController.addListener(_updateState);
-    _passwordController.addListener(_updateState);
   }
 
   void _updateState() {
     setState(() {});
   }
 
-  bool get _isButtonEnabled {
-    if (_step == 0) {
-      return _passwordController.text.isNotEmpty;
-    } else {
-      return _emailController.text.isNotEmpty;
-    }
-  }
+  bool get _isButtonEnabled => _emailController.text.trim().isNotEmpty;
 
-  void _nextStep() {
+  void _update() {
     if (!_isButtonEnabled) return;
 
-    setState(() {
-      if (_step == 0) {
-        _step = 1;
-      } else if (_step == 1) {
-        Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const EmailUpdatedPage()),
-        );
-      }
-    });
+    Navigator.pop(context);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const EmailUpdatedPage()),
+    );
   }
 
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
@@ -97,8 +79,9 @@ class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
                     ],
                   ),
                   const SizedBox(height: 20),
+
                   Text(
-                    _step == 0 ? 'Security Verification' : 'Update Email',
+                    'Update Email',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: theme.textTheme.headlineMedium?.color,
@@ -106,64 +89,39 @@ class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+
                   const SizedBox(height: 40),
+
                   Text(
-                    _step == 0
-                        ? 'Enter your password'
-                        : 'Enter your new email address',
+                    'Enter your new email address',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: dialogText,
                       height: 1.4,
                     ),
                   ),
+
                   const SizedBox(height: 40),
 
-                  if (_step == 0)
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: !_isPasswordVisible,
-                      decoration: InputDecoration(
-                        hintText: 'Password',
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                            color: theme.iconTheme.color,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
-                        ),
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      hintText: 'New Email',
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
                       ),
                     ),
-
-                  if (_step == 1)
-                    TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(
-                        hintText: 'New Email',
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                      ),
-                    ),
+                  ),
 
                   const SizedBox(height: 24),
+
                   SizedBox(
                     width: 100,
                     height: 44,
                     child: ElevatedButton(
-                      onPressed: _isButtonEnabled ? _nextStep : null,
+                      onPressed: _isButtonEnabled ? _update : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isButtonEnabled
                             ? (isDark
@@ -181,10 +139,7 @@ class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text(
-                        _step == 0 ? 'Next' : 'Update',
-                        textAlign: TextAlign.center,
-                      ),
+                      child: const Text('Update', textAlign: TextAlign.center),
                     ),
                   ),
                 ],
