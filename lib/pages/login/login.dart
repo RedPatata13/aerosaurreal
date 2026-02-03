@@ -1,8 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../../services/auth_service.dart';
-import '../../services/google_auth_service.dart';
-import '../../services/user_service.dart';
+import 'package:provider/provider.dart';
+import '../../services/auth/auth_service.dart';
+import '../../services/auth/google_auth_service.dart';
 import '../../utils/snackbar_utils.dart';
+import '../../utils/token_utils.dart';
+import 'package:aerosaur_2nd_sem/state/user_store.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,10 +20,16 @@ class _LoginPageState extends State<LoginPage> {
 
   final _authService = AuthService();
   final _googleAuthService = GoogleAuthService();
-  final _userService = UserService();
 
   bool _obscurePassword = true;
   bool _rememberMe = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _login() async {
     try {
@@ -28,42 +37,77 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Firebase user is null after login');
+
+      // DEBUG: prove we have a real token BEFORE calling backend
+      await _printIdToken();
+
+      await context.read<UserStore>().loadOrCreate();
+
       _navigateToApp();
-    } catch (_) {
-      SnackbarUtils.show(context, 'Invalid credentials', Colors.red);
+    } catch (e, st) {
+      debugPrint('LOGIN ERROR: $e');
+      debugPrintStack(stackTrace: st);
+      SnackbarUtils.show(context, 'Login failed: $e', Colors.red);
     }
   }
 
   Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      SnackbarUtils.show(context, 'Enter your email first', Colors.orange);
+      return;
+    }
+
     try {
-      await _authService.sendPasswordReset(_emailController.text.trim());
+      await _authService.sendPasswordReset(email);
       SnackbarUtils.show(context, 'Password reset email sent', Colors.green);
     } catch (_) {
       SnackbarUtils.show(context, 'Failed to send reset email', Colors.red);
     }
   }
 
+  //temporary
+  Future<void> _printIdToken() async {
+    try {
+      final token = await TokenUtils.getIdToken(forceRefresh: true);
+
+      print('FIREBASE_ID_TOKEN=$token');
+      print('TOKEN_DOTS=${token.split(".").length - 1}');
+    } catch (e) {
+      if (!mounted) return;
+      SnackbarUtils.show(context, 'Failed to get token: $e', Colors.red);
+    }
+  }
+
   Future<void> _googleLogin() async {
-    await _googleAuthService.handleSignIn(
-      onSuccess: (credential) async {
-        final user = credential.user;
-        if (user != null) {
-          await _userService.createUserIfNotExists(
-            uid: user.uid,
-            email: user.email ?? '',
-            displayName: user.displayName,
-          );
-        }
-        _navigateToApp();
-      },
-      onError: (_) {
-        SnackbarUtils.show(context, 'Google sign in failed', Colors.red);
-      },
-    );
+    try {
+      await _googleAuthService.signOutGoogle();
+
+      final credential = await _googleAuthService.signInWithGoogle();
+      final user = credential.user;
+      if (user == null)
+        throw Exception('Firebase user is null after Google sign-in');
+
+      await user.getIdToken(true);
+
+      // DEBUG first
+      await _printIdToken();
+
+      await context.read<UserStore>().loadOrCreate();
+
+      _navigateToApp();
+    } catch (e, st) {
+      debugPrint('GOOGLE LOGIN ERROR: $e');
+      debugPrintStack(stackTrace: st);
+      SnackbarUtils.show(context, 'Google sign in failed: $e', Colors.red);
+    }
   }
 
   void _navigateToApp() {
-    Navigator.pushNamed(context, '/app');
+    Navigator.pushReplacementNamed(context, '/app');
   }
 
   @override
@@ -80,7 +124,6 @@ class _LoginPageState extends State<LoginPage> {
               children: [
                 Image.asset('images/logo.png', height: 70, width: 70),
                 const SizedBox(height: 10),
-
                 Text(
                   'AEROSAUR',
                   style: theme.textTheme.headlineMedium?.copyWith(
@@ -94,7 +137,6 @@ class _LoginPageState extends State<LoginPage> {
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 25),
-
                 Text(
                   'LOGIN',
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -102,8 +144,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 25),
-
-                // Email
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text('Enter Email'),
@@ -111,6 +151,8 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 5),
                 TextField(
                   controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
                   decoration: InputDecoration(
                     hintText: 'Enter your email',
                     border: OutlineInputBorder(
@@ -120,8 +162,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-
-                // Password
                 Align(
                   alignment: Alignment.centerLeft,
                   child: Text('Enter Password'),
@@ -130,6 +170,7 @@ class _LoginPageState extends State<LoginPage> {
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
                     hintText: 'Enter your password',
                     border: OutlineInputBorder(
@@ -142,17 +183,12 @@ class _LoginPageState extends State<LoginPage> {
                             ? Icons.visibility_off
                             : Icons.visibility,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
                 ),
                 const SizedBox(height: 10),
-
-                // Remember me / Forgot password
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -160,11 +196,8 @@ class _LoginPageState extends State<LoginPage> {
                       children: [
                         Checkbox(
                           value: _rememberMe,
-                          onChanged: (v) {
-                            setState(() {
-                              _rememberMe = v ?? false;
-                            });
-                          },
+                          onChanged: (v) =>
+                              setState(() => _rememberMe = v ?? false),
                         ),
                         const Text('Remember Me'),
                       ],
@@ -176,8 +209,6 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
                 const SizedBox(height: 25),
-
-                // Create account / Login
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -205,7 +236,6 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
                 const SizedBox(height: 25),
-
                 Row(
                   children: const [
                     Expanded(child: Divider()),
@@ -217,8 +247,6 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
                 const SizedBox(height: 30),
-
-                // Google login
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'username_updated_page.dart';
+import 'package:aerosaur_2nd_sem/services/api/api_exceptions.dart';
+import 'package:aerosaur_2nd_sem/state/user_store.dart';
 
 class UpdateUsernameDialog extends StatefulWidget {
   const UpdateUsernameDialog({super.key});
@@ -10,50 +14,79 @@ class UpdateUsernameDialog extends StatefulWidget {
 
 class _UpdateUsernameDialogState extends State<UpdateUsernameDialog> {
   final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
-
-  int _step = 0;
+  bool _loading = false;
+  String? _errorText;
 
   @override
   void initState() {
     super.initState();
-    _usernameController.addListener(_updateState);
-    _passwordController.addListener(_updateState);
+
+    _usernameController.addListener(() {
+      if (!mounted) return;
+      if (_errorText != null) {
+        setState(() => _errorText = null);
+      } else {
+        setState(() {});
+      }
+    });
   }
 
-  void _updateState() {
-    setState(() {});
-  }
+  bool get _isButtonEnabled =>
+      !_loading && _usernameController.text.trim().isNotEmpty;
 
-  bool get _isButtonEnabled {
-    if (_step == 0) {
-      return _passwordController.text.isNotEmpty;
-    } else {
-      return _usernameController.text.isNotEmpty;
-    }
-  }
-
-  void _nextStep() {
+  Future<void> _updateUsername() async {
     if (!_isButtonEnabled) return;
 
     setState(() {
-      if (_step == 0) {
-        _step = 1;
-      } else if (_step == 1) {
-        Navigator.pop(context);
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const UsernameUpdatedPage()),
-        );
-      }
+      _loading = true;
+      _errorText = null;
     });
+
+    final newUsername = _usernameController.text.trim();
+
+    try {
+      await context.read<UserStore>().updateUsername(newUsername);
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.updateDisplayName(newUsername);
+        await user.reload();
+      }
+
+      if (!mounted) return;
+
+      Navigator.pop(context);
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const UsernameUpdatedPage()),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+
+      if (e.statusCode == 409) {
+        setState(() {
+          _errorText = 'Username already exists.';
+        });
+        return;
+      }
+
+      setState(() {
+        _errorText = (e.body['message'] ?? e.body['error'] ?? 'Update failed')
+            .toString();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorText = 'Something went wrong. Please try again.';
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
   void dispose() {
     _usernameController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
@@ -98,7 +131,7 @@ class _UpdateUsernameDialogState extends State<UpdateUsernameDialog> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    _step == 0 ? 'Security Verification' : 'Update Username',
+                    'Update Username',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: theme.textTheme.headlineMedium?.color,
@@ -108,9 +141,7 @@ class _UpdateUsernameDialogState extends State<UpdateUsernameDialog> {
                   ),
                   const SizedBox(height: 40),
                   Text(
-                    _step == 0
-                        ? 'Enter your password'
-                        : 'Enter your new username',
+                    'Enter your new username',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: dialogText,
@@ -118,52 +149,28 @@ class _UpdateUsernameDialogState extends State<UpdateUsernameDialog> {
                     ),
                   ),
                   const SizedBox(height: 40),
-
-                  if (_step == 0)
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: !_isPasswordVisible,
-                      decoration: InputDecoration(
-                        hintText: 'Password',
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                            color: theme.iconTheme.color,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _isPasswordVisible = !_isPasswordVisible;
-                            });
-                          },
-                        ),
+                  TextField(
+                    controller: _usernameController,
+                    decoration: const InputDecoration(hintText: 'New Username'),
+                  ),
+                  if (_errorText != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      _errorText!,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-
-                  if (_step == 1)
-                    TextField(
-                      controller: _usernameController,
-                      keyboardType: TextInputType.text,
-                      decoration: const InputDecoration(
-                        hintText: 'New Username',
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 14,
-                        ),
-                      ),
-                    ),
-
-                  const SizedBox(height: 24),
+                  ],
+                  const SizedBox(height: 20),
                   SizedBox(
                     width: 100,
                     height: 44,
                     child: ElevatedButton(
-                      onPressed: _isButtonEnabled ? _nextStep : null,
+                      onPressed: _isButtonEnabled ? _updateUsername : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isButtonEnabled
                             ? (isDark
@@ -181,10 +188,13 @@ class _UpdateUsernameDialogState extends State<UpdateUsernameDialog> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: Text(
-                        _step == 0 ? 'Next' : 'Update',
-                        textAlign: TextAlign.center,
-                      ),
+                      child: _loading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Update', textAlign: TextAlign.center),
                     ),
                   ),
                 ],

@@ -1,3 +1,4 @@
+import 'package:aerosaur_2nd_sem/services/api/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:app_settings/app_settings.dart';
@@ -8,8 +9,10 @@ import './../home/widgets/home_header.dart';
 import './../device_management/device_management.dart';
 import 'dialogs/change_email_dialog/update_email_dialog.dart';
 import 'dialogs/change_username_dialog/update_username_dialog.dart';
-import '/services/wifi_service.dart';
+import '../../services/device/wifi_service.dart';
 import '../../../models/device.dart';
+import 'package:provider/provider.dart';
+import '../../state/user_store.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -42,16 +45,16 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = FirebaseAuth.instance.currentUser;
-    final username = user?.displayName ?? 'User';
     final uid = user?.uid;
+    final userStore = context.watch<UserStore>();
+    final shownUsername = userStore.username;
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            /// HomeHeader
             HomeHeader(
-              username: username,
+              username: shownUsername,
               iconColor: theme.colorScheme.onSurface,
               onRegisterDevice: () {
                 if (uid == null) return;
@@ -75,25 +78,26 @@ class _SettingsPageState extends State<SettingsPage> {
                                 (p) => p.providerId == 'google.com',
                               ) ??
                               false;
+
                           final hasPassword =
                               user?.providerData.any(
                                 (p) => p.providerId == 'password',
                               ) ??
                               false;
+
                           final email = user?.email;
+                          final isLoggedIn = user != null;
 
                           return Column(
                             children: [
                               SettingsTile(
                                 icon: const Icon(Icons.email_outlined),
                                 title: 'Email',
-                                subtitle:
-                                    user?.email ??
-                                    (hasGoogleProvider ? 'N/A' : 'Not set'),
-                                trailing: hasGoogleProvider
+                                subtitle: user?.email ?? 'Not set',
+                                trailing: isLoggedIn
                                     ? const Icon(Icons.chevron_right)
                                     : null,
-                                onTap: hasGoogleProvider
+                                onTap: isLoggedIn
                                     ? () async {
                                         await showDialog<bool>(
                                           context: context,
@@ -107,24 +111,16 @@ class _SettingsPageState extends State<SettingsPage> {
                               SettingsTile(
                                 icon: const Icon(Icons.person_outline),
                                 title: 'Username',
-                                subtitle:
-                                    user?.displayName ??
-                                    (hasGoogleProvider
-                                        ? 'Set your username'
-                                        : 'N/A'),
-                                trailing: hasGoogleProvider
-                                    ? const Icon(Icons.chevron_right)
-                                    : null,
-                                onTap: hasGoogleProvider
-                                    ? () async {
-                                        await showDialog<bool>(
-                                          context: context,
-                                          barrierDismissible: false,
-                                          builder: (_) =>
-                                              const UpdateUsernameDialog(),
-                                        );
-                                      }
-                                    : null,
+                                subtitle: shownUsername,
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: () async {
+                                  await showDialog<bool>(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (_) =>
+                                        const UpdateUsernameDialog(),
+                                  );
+                                },
                               ),
                               SettingsTile(
                                 icon: const Icon(Icons.lock_outline),
@@ -144,7 +140,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                     );
                                     return;
                                   }
-
                                   try {
                                     await FirebaseAuth.instance
                                         .sendPasswordResetEmail(email: email);
@@ -174,7 +169,6 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 10),
 
                   /// Connectivity
@@ -323,6 +317,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
                       if (shouldLogout ?? false) {
                         await FirebaseAuth.instance.signOut();
+                        if (!mounted) return;
                         Navigator.pushReplacementNamed(context, '/login');
                       }
                     },

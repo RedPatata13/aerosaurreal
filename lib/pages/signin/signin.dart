@@ -1,10 +1,13 @@
+import 'package:aerosaur_2nd_sem/services/api/api_exceptions.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../services/signup.dart';
-import '../../services/google_auth_service.dart';
+import 'package:provider/provider.dart';
+import '../../services/auth/auth_service.dart';
+import '../../services/auth/google_auth_service.dart';
 import '../../components/input_field.dart';
 import '../../components/password_input_field.dart';
+import 'package:aerosaur_2nd_sem/services/repositories/user_repository.dart';
+import 'package:aerosaur_2nd_sem/state/user_store.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -15,11 +18,11 @@ class SignUpPage extends StatefulWidget {
 
 class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
-
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final authService = AuthService();
 
   bool _isLoading = false;
   final GoogleAuthService _googleAuthService = GoogleAuthService();
@@ -44,7 +47,6 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 
-  // Email/Password Sign Up
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) {
       _showSnackbar("Please correct the errors in the form.", Colors.orange);
@@ -64,14 +66,43 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _isLoading = true);
 
     try {
-      await signUpUser(email: email, password: password, username: username);
+      await authService.signUp(
+        email: email,
+        password: password,
+        username: username,
+      );
+
+      final usersRepo = context.read<UserRepository>();
+
+      try {
+        await context.read<UserRepository>().getOrCreateProfile(
+          username: username,
+        );
+      } on ApiException catch (e) {
+        if (e.statusCode == 409) {
+          _showSnackbar(
+            'Username already taken. Please choose another.',
+            Colors.red,
+          );
+
+          final currentUser = FirebaseAuth.instance.currentUser;
+          await currentUser?.delete();
+          await FirebaseAuth.instance.signOut();
+          return;
+        }
+        rethrow;
+      }
 
       if (!mounted) return;
 
       _showSnackbar(
-        "Sign up successful! Redirecting to Login...",
+        "Sign up successful! Please verify your email. Redirecting to Login...",
         Colors.green,
       );
+
+      await FirebaseAuth.instance.signOut();
+
+      if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/login');
     } on FirebaseAuthException catch (e) {
       String message;
@@ -97,38 +128,24 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
-  // Google Sign Up
   Future<void> _googleSignUp() async {
-    _googleAuthService.handleSignIn(
-      onSuccess: (credential) async {
-        final user = credential.user!;
-        final doc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
+    try {
+      final credential = await _googleAuthService.signInWithGoogle();
+      final user = credential.user;
 
-        if (!doc.exists) {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .set({
-                'uid': user.uid,
-                'email': user.email ?? '',
-                'displayName': user.displayName,
-                'username': user.displayName,
-                'createdAt': FieldValue.serverTimestamp(),
-              });
-        }
+      if (user == null) {
+        throw Exception('Firebase user is null after Google sign-in');
+      }
 
-        if (!mounted) return;
-        _showSnackbar('Signed up with Google!', Colors.green);
-        Navigator.of(context).pushReplacementNamed('/login');
-      },
-      onError: (error) {
-        if (!mounted) return;
-        _showSnackbar('Google sign-up failed: $error', Colors.red);
-      },
-    );
+      await context.read<UserStore>().loadOrCreate();
+
+      if (!mounted) return;
+      _showSnackbar('Signed up with Google!', Colors.green);
+      Navigator.of(context).pushReplacementNamed('/login');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackbar('Google sign-up failed: $e', Colors.red);
+    }
   }
 
   @override
@@ -149,8 +166,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 fit: BoxFit.contain,
               ),
               const SizedBox(height: 10),
-
-              // Title
               Text(
                 'AEROSAUR',
                 style: theme.textTheme.headlineMedium?.copyWith(
@@ -164,7 +179,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(height: 25),
-
               Text(
                 'SIGN UP',
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -172,7 +186,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               const SizedBox(height: 25),
-
               Form(
                 key: _formKey,
                 child: Column(
@@ -206,7 +219,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               const SizedBox(height: 5),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -217,7 +229,6 @@ class _SignUpPageState extends State<SignUpPage> {
                       style: theme.textTheme.bodyMedium,
                     ),
                   ),
-
                   SizedBox(
                     width: 120,
                     child: ElevatedButton(
@@ -240,7 +251,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 ],
               ),
               const SizedBox(height: 25),
-
               Row(
                 children: const [
                   Expanded(child: Divider(thickness: 1)),
@@ -252,8 +262,6 @@ class _SignUpPageState extends State<SignUpPage> {
                 ],
               ),
               const SizedBox(height: 30),
-
-              // Google sign up button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
