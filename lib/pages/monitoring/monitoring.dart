@@ -58,7 +58,15 @@ class Monitoring extends StatelessWidget {
             ),
 
             const SizedBox(height: 14),
-            Text('Reading Status', style: sectionTitleStyle),
+            Text(
+              'Reading Status',
+              style: (theme.textTheme.titleMedium ?? const TextStyle())
+                  .copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) + 1,
+                    color: theme.colorScheme.onSurface,
+                  ),
+            ),
             const SizedBox(height: 10),
             const MonitoringLegend(),
             const SizedBox(height: 12),

@@ -36,6 +36,7 @@ class _HomeContentState extends State<HomeContent> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
 
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -93,6 +94,14 @@ class _HomeContentState extends State<HomeContent> {
         seed: index,
       );
     });
+  }
+
+  late final PageController _pageController;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -159,8 +168,10 @@ class _HomeContentState extends State<HomeContent> {
             ),
             Expanded(
               child: hasDevices
-                  ? IndexedStack(
-                      index: _selectedIndex,
+                  ? PageView(
+                      controller: _pageController,
+                      physics: const BouncingScrollPhysics(),
+                      onPageChanged: (i) => setState(() => _selectedIndex = i),
                       children: [
                         if (selectedDevice != null)
                           Dashboard(
@@ -214,9 +225,13 @@ class _HomeContentState extends State<HomeContent> {
       bottomNavigationBar: CustomBottomNav(
         currentIndex: _selectedIndex,
         onTap: (value) {
-          setState(() {
-            _selectedIndex = value;
-          });
+          if (value == _selectedIndex) return;
+
+          _pageController.animateToPage(
+            value,
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+          );
         },
       ),
     );
