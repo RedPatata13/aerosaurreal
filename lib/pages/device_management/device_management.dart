@@ -1,13 +1,15 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aerosaur_2nd_sem/routes/routes.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
 import '/../models/device.dart';
-import '/../enum/active_icon.dart';
+import '/../services/api/devices_api.dart';
 import 'widgets/filled_input.dart';
 import 'widgets/device_row.dart';
-import 'widgets/dialog_button.dart';
 import './../home/widgets/home_header.dart';
+import 'widgets/dialog_button.dart';
+import '../../services/ble/ble_provisioning_service.dart';
+import 'package:provider/provider.dart';
+import '/services/api/api_client.dart';
 
 class DeviceManagementPage extends StatefulWidget {
   final String uid;
@@ -28,7 +30,22 @@ class DeviceManagementPage extends StatefulWidget {
 class _DeviceManagementPageState extends State<DeviceManagementPage> {
   final _deviceIdController = TextEditingController();
   final _deviceNameController = TextEditingController();
+
+  late final DevicesApi _api;
+
   bool _saving = false;
+  bool _loading = true;
+  String? _error;
+
+  List<Device> _devices = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _api = DevicesApi(context.read<ApiClient>());
+    _devices = widget.devices;
+    _loadDevices();
+  }
 
   @override
   void dispose() {
@@ -37,213 +54,153 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     super.dispose();
   }
 
-  List<Device> devicesState = [];
-  int selectedDeviceIndex = 0;
+  Future<void> _loadDevices() async {
+    try {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
 
-  void _showRegisterDeviceDialog(String uid) {
-    showDialog(
-      context: context,
-      builder: (_) => DeviceManagementPage(
-        uid: uid,
-        devices: devicesState,
-        onDevicesChanged: (next) {
-          setState(() {
-            devicesState = next;
-            if (selectedDeviceIndex >= next.length) selectedDeviceIndex = 0;
-          });
-        },
-      ),
-    );
+      final items = await _api.listDevices();
+      final next = items.map(Device.fromApi).toList();
+
+      if (!mounted) return;
+      setState(() {
+        _devices = next;
+        _loading = false;
+      });
+
+      widget.onDevicesChanged(next);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
   }
 
-  Future<void> _refreshDevices() async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() {
-      //re-fetch devics
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final user = FirebaseAuth.instance.currentUser;
-    final username = user?.displayName ?? 'User';
-    final uid = user?.uid;
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            HomeHeader(
-              username: username,
-              iconColor: theme.colorScheme.onSurface,
-              onRegisterDevice: () {
-                if (uid == null) return;
-                _showRegisterDeviceDialog(uid);
-              },
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                child: RefreshIndicator(
-                  onRefresh: _refreshDevices,
-                  child: SingleChildScrollView(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: theme.dividerColor),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Device Management',
-                            style:
-                                (theme.textTheme.titleMedium ??
-                                        const TextStyle())
-                                    .copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'Register new Device',
-                            style:
-                                (theme.textTheme.bodyMedium ??
-                                        const TextStyle())
-                                    .copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: FilledInput(
-                                  controller: _deviceIdController,
-                                  fill: theme.inputDecorationTheme.fillColor!,
-                                  hint: 'Enter Device ID (e.g 2024-AVXXXXXX)',
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              SizedBox(
-                                width: 40,
-                                height: 40,
-                                child: ElevatedButton(
-                                  onPressed: _saving
-                                      ? null
-                                      : () {
-                                          final id = _deviceIdController.text
-                                              .trim();
-                                          if (id.isNotEmpty) {
-                                            _submitNewDevice();
-                                            return;
-                                          }
-                                          FocusScope.of(context).requestFocus();
-                                        },
-                                  style: theme.elevatedButtonTheme.style
-                                      ?.copyWith(
-                                        padding: MaterialStateProperty.all(
-                                          EdgeInsets.zero,
-                                        ),
-                                        shape: MaterialStateProperty.all(
-                                          RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                  child: const Icon(Icons.add, size: 20),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          FilledInput(
-                            controller: _deviceNameController,
-                            fill: theme.inputDecorationTheme.fillColor!,
-                            hint: 'Enter Name Device',
-                          ),
-                          const SizedBox(height: 14),
-                          Divider(color: theme.dividerColor, height: 1),
-                          const SizedBox(height: 14),
-                          Text(
-                            'Registered Devices',
-                            style:
-                                (theme.textTheme.bodyMedium ??
-                                        const TextStyle())
-                                    .copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                    ),
-                          ),
-                          const SizedBox(height: 10),
-                          for (final device in widget.devices) ...[
-                            DeviceRow(
-                              title: device.name,
-                              subtitle: 'ID: 2024-${device.id}',
-                              onDelete: _saving
-                                  ? null
-                                  : () => _confirmDelete(device.id),
-                              danger: Colors.red,
-                              borderColor: theme.dividerColor,
-                              titleColor: theme.colorScheme.onSurface,
-                              subtitleColor:
-                                  theme.textTheme.bodyMedium?.color ??
-                                  theme.colorScheme.onSurface,
-                            ),
-                            const SizedBox(height: 10),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Future<void> _refreshDevices() => _loadDevices();
 
   Future<void> _submitNewDevice() async {
     final id = _deviceIdController.text.trim();
     final name = _deviceNameController.text.trim();
-    if (id.isEmpty || _saving) return;
-    setState(() => _saving = true);
-    final effectiveName = name.isEmpty ? 'Device' : name;
 
-    try {
-      final newDevice = Device.demoFromDb(
-        id: id,
-        name: effectiveName,
-        seed: widget.devices.length,
-      );
-      final updatedDevices = [...widget.devices, newDevice];
-      widget.onDevicesChanged(updatedDevices);
-
-      await FirebaseFirestore.instance.collection('users').doc(widget.uid).set({
-        'devices': FieldValue.arrayUnion([
-          {'code': id, 'name': effectiveName, 'createdAt': Timestamp.now()},
-        ]),
-      }, SetOptions(merge: true));
-
-      if (!mounted) return;
-      _deviceIdController.clear();
-      _deviceNameController.clear();
-      setState(() => _saving = false);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _saving = false);
+    if (id.isEmpty || _saving) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Failed to add device.')));
+      ).showSnackBar(const SnackBar(content: Text('Device ID is required.')));
+      return;
+    }
+
+    setState(() => _saving = true);
+
+    try {
+      await _api.registerDevice(deviceId: id, name: name.isEmpty ? null : name);
+      await _loadDevices();
+
+      if (!mounted) return;
+      setState(() => _saving = false);
+
+      _deviceIdController.clear();
+      _deviceNameController.clear();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add device: $e')));
+    }
+  }
+
+  Future<void> _showProvisionDialog(String deviceId) async {
+    final ssidCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Provision Wi-Fi"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: ssidCtrl,
+              decoration: const InputDecoration(hintText: "Wi-Fi SSID"),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passCtrl,
+              decoration: const InputDecoration(hintText: "Wi-Fi Password"),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Provision"),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    final ssid = ssidCtrl.text.trim();
+    final pass = passCtrl.text;
+
+    if (ssid.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("SSID is required")));
+      return;
+    }
+
+    try {
+      await BleProvisioningService.provisionWifi(
+        deviceId: deviceId,
+        ssid: ssid,
+        pass: pass,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Provision sent! Device will reboot and connect."),
+        ),
+      );
+
+      await Future.delayed(const Duration(seconds: 3));
+      await _loadDevices();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Provision failed: $e")));
+    }
+  }
+
+  Future<void> _unregisterDevice(String deviceId) async {
+    try {
+      await _api.unregisterDevice(deviceId);
+      await _loadDevices();
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Device unregistered.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to unregister: $e')));
     }
   }
 
@@ -275,7 +232,6 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                 ),
                 const SizedBox(height: 18),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Expanded(
                       child: DialogButton(
@@ -308,44 +264,145 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     );
 
     if (shouldDelete == true) {
-      await _deleteDevice(deviceId);
+      await _unregisterDevice(deviceId);
     }
   }
 
-  Future<void> _deleteDevice(String deviceId) async {
-    if (_saving) return;
-    setState(() => _saving = true);
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final user = FirebaseAuth.instance.currentUser;
+    final username = user?.displayName ?? 'User';
 
-    try {
-      final updatedDevices = widget.devices
-          .where((d) => d.id != deviceId)
-          .toList();
-      widget.onDevicesChanged(updatedDevices);
-
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.uid)
-          .get();
-      final data = doc.data() ?? {};
-      final raw = (data['devices'] as List?) ?? [];
-      final filtered = raw.where((entry) {
-        if (entry is Map) return entry['code']?.toString() != deviceId;
-        if (entry is String) return entry != deviceId;
-        return true;
-      }).toList();
-
-      await FirebaseFirestore.instance.collection('users').doc(widget.uid).set({
-        'devices': filtered,
-      }, SetOptions(merge: true));
-
-      if (!mounted) return;
-      setState(() => _saving = false);
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Failed to remove device.')));
-    }
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            HomeHeader(
+              username: username,
+              iconColor: theme.colorScheme.onSurface,
+              onRegisterDevice: () {
+                Navigator.of(context).pushNamed(AppRoutes.deviceManagement);
+              },
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                child: RefreshIndicator(
+                  onRefresh: _refreshDevices,
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: theme.dividerColor),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Device Management',
+                            style:
+                                (theme.textTheme.titleMedium ??
+                                        const TextStyle())
+                                    .copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 12),
+                          FilledInput(
+                            controller: _deviceIdController,
+                            fill: theme.inputDecorationTheme.fillColor!,
+                            hint: 'Enter Device ID (e.g. 2024-AVXXXXXX)',
+                          ),
+                          const SizedBox(height: 10),
+                          FilledInput(
+                            controller: _deviceNameController,
+                            fill: theme.inputDecorationTheme.fillColor!,
+                            hint: 'Enter Device Name (optional)',
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 42,
+                            child: ElevatedButton(
+                              onPressed: _saving ? null : _submitNewDevice,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.primary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                _saving ? 'Adding...' : 'Register Device',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Divider(color: theme.dividerColor, height: 1),
+                          const SizedBox(height: 14),
+                          if (_loading)
+                            Text(
+                              'Loading devices...',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          if (_error != null)
+                            Text(
+                              _error!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.red,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Registered Devices',
+                            style:
+                                (theme.textTheme.bodyMedium ??
+                                        const TextStyle())
+                                    .copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                          ),
+                          const SizedBox(height: 10),
+                          if (!_loading && _devices.isEmpty)
+                            Text(
+                              'No registered devices yet.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          for (final device in _devices) ...[
+                            DeviceRow(
+                              title: device.name,
+                              subtitle: 'ID: ${device.id}',
+                              onDelete: () => _confirmDelete(device.id),
+                              onTap: () => _showProvisionDialog(device.id),
+                              danger: Colors.red,
+                              borderColor: theme.dividerColor,
+                              titleColor: theme.colorScheme.onSurface,
+                              subtitleColor:
+                                  theme.textTheme.bodyMedium?.color ??
+                                  theme.colorScheme.onSurface,
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

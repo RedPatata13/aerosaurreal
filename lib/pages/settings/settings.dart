@@ -1,4 +1,3 @@
-import 'package:aerosaur_2nd_sem/services/api/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:app_settings/app_settings.dart';

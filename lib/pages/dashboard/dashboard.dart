@@ -38,7 +38,6 @@ class Dashboard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // AQI Card
             AqiCard(
               background: theme.colorScheme.primary,
               titleStyle: (theme.textTheme.titleMedium ?? const TextStyle())
@@ -56,7 +55,7 @@ class Dashboard extends StatelessWidget {
                   context,
                   title: 'AQI',
                   body:
-                      'Air Quality Index (AQI) indicates overall air quality on a 0–200 scale, where 0 is excellent and 200 is very unhealthy. Higher values mean cleaner air.',
+                      'Air Quality Index (AQI) indicates overall air quality on a 0–200 scale, where 0 is excellent and 200 is very unhealthy.',
                 );
               },
               valueLabel: selectedDevice.aqiLabel,
@@ -67,15 +66,17 @@ class Dashboard extends StatelessWidget {
             ),
 
             const SizedBox(height: 16),
+
+            /// DEVICE LIST
             Text(
               'Current Devices',
               style: (theme.textTheme.titleMedium ?? const TextStyle())
                   .copyWith(
                     fontWeight: FontWeight.w700,
                     fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) + 1,
-                    color: theme.colorScheme.onSurface,
                   ),
             ),
+
             const SizedBox(height: 10),
 
             SizedBox(
@@ -99,6 +100,8 @@ class Dashboard extends StatelessWidget {
             ),
 
             const SizedBox(height: 16),
+
+            /// SMART MODE
             SectionCard(
               cardColor: theme.cardTheme.color ?? theme.colorScheme.surface,
               borderColor: theme.dividerColor,
@@ -117,7 +120,7 @@ class Dashboard extends StatelessWidget {
                       selectedDevice.copyWith(smartMode: value),
                     ),
                   ),
-                  Divider(color: theme.dividerColor, height: 18),
+                  Divider(color: theme.dividerColor),
                   if (selectedDevice.smartMode) ...[
                     ToggleRow(
                       label: 'Auto adjust fan speed',
@@ -132,7 +135,7 @@ class Dashboard extends StatelessWidget {
                         selectedDevice.copyWith(autoAdjustFanSpeed: value),
                       ),
                     ),
-                    Divider(color: theme.dividerColor, height: 18),
+                    Divider(color: theme.dividerColor),
                     ToggleRow(
                       label: 'Turn off automatically',
                       value: selectedDevice.turnOffAutomatically,
@@ -152,15 +155,14 @@ class Dashboard extends StatelessWidget {
             ),
 
             const SizedBox(height: 14),
+
+            /// FAN SPEED
             Text(
               'Fan Speed',
               style: (theme.textTheme.titleMedium ?? const TextStyle())
-                  .copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: (theme.textTheme.titleMedium?.fontSize ?? 16) + 1,
-                    color: theme.colorScheme.onSurface,
-                  ),
+                  .copyWith(fontWeight: FontWeight.w700),
             ),
+
             const SizedBox(height: 10),
 
             SectionCard(
@@ -174,10 +176,7 @@ class Dashboard extends StatelessWidget {
                 borderColor: theme.dividerColor,
                 activeColor: theme.colorScheme.primary,
                 inactiveFill: theme.colorScheme.primary.withOpacity(0.1),
-                inactiveTextColor:
-                    (theme.textTheme.bodyMedium ?? const TextStyle()).color
-                        ?.withOpacity(0.7) ??
-                    theme.colorScheme.onSurface.withOpacity(0.7),
+                inactiveTextColor: theme.colorScheme.onSurface.withOpacity(0.7),
                 activeTextColor: theme.colorScheme.onPrimary,
                 textStyle: (theme.textTheme.bodyMedium ?? const TextStyle())
                     .copyWith(fontWeight: FontWeight.w600),
