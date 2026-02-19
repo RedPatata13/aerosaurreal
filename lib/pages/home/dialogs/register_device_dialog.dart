@@ -1,7 +1,8 @@
+import 'package:aerosaur_2nd_sem/services/api/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-import 'device_registered_dialog.dart';
+import 'package:provider/provider.dart';
+import '/services/api/devices_api.dart';
 
 class RegisterDeviceDialog extends StatefulWidget {
   final String uid;
@@ -15,6 +16,17 @@ class RegisterDeviceDialog extends StatefulWidget {
 class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
   final _controllers = List.generate(6, (_) => TextEditingController());
   final _focusNodes = List.generate(6, (_) => FocusNode());
+
+  late final DevicesApi _api;
+
+  bool _submitting = false;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _api = DevicesApi(context.read<ApiClient>());
+  }
 
   @override
   void dispose() {
@@ -37,6 +49,7 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
       _focusNodes[index + 1].requestFocus();
     }
 
+    if (_errorText != null) setState(() => _errorText = null);
     setState(() {});
   }
 
@@ -48,15 +61,37 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
     }
   }
 
-  void _submit() {
-    Navigator.of(context).pop();
-    showDialog<void>(
-      context: context,
-      builder: (context) => DeviceRegisteredDialog(
-        uid: widget.uid,
-        code: _controllers.map((c) => c.text).join(),
-      ),
-    );
+  bool get _isComplete => _controllers.every((c) => c.text.isNotEmpty);
+
+  String get _code => _controllers.map((c) => c.text).join();
+
+  Future<void> _submit() async {
+    if (!_isComplete || _submitting) return;
+
+    final code = _code;
+    final deviceId = code;
+
+    setState(() {
+      _submitting = true;
+      _errorText = null;
+    });
+
+    try {
+      await _api.registerDevice(deviceId: deviceId, name: null);
+
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Device $deviceId registered!')));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _errorText = e.toString();
+      });
+    }
   }
 
   @override
@@ -64,9 +99,6 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;
-    final isComplete = _controllers.every(
-      (controller) => controller.text.isNotEmpty,
-    );
 
     final dialogBg = isDark ? const Color(0xFF1F2228) : Colors.white;
     final dialogText = isDark
@@ -79,7 +111,7 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
         constraints: const BoxConstraints(maxWidth: 360),
         child: SizedBox(
           width: 340,
-          height: 380,
+          height: 410,
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: dialogBg,
@@ -100,7 +132,9 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
                         children: [
                           const Spacer(),
                           IconButton(
-                            onPressed: () => Navigator.of(context).pop(),
+                            onPressed: _submitting
+                                ? null
+                                : () => Navigator.of(context).pop(false),
                             icon: Icon(
                               Icons.close,
                               color: isDark ? Colors.white : null,
@@ -126,6 +160,8 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
                         ),
                       ),
                       const SizedBox(height: 16),
+
+                      // Code boxes
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(6, (index) {
@@ -149,7 +185,7 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
                                     onChanged: (value) =>
                                         _onChanged(index, value),
                                     onSubmitted: (_) {
-                                      if (index == 5 && isComplete) _submit();
+                                      if (index == 5 && _isComplete) _submit();
                                     },
                                   ),
                                 ),
@@ -159,12 +195,28 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
                           );
                         }),
                       ),
-                      const SizedBox(height: 18),
+
+                      const SizedBox(height: 12),
+
+                      if (_errorText != null) ...[
+                        Text(
+                          _errorText!,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+
                       SizedBox(
                         width: double.infinity,
                         height: 44,
                         child: ElevatedButton(
-                          onPressed: isComplete ? _submit : null,
+                          onPressed: (!_isComplete || _submitting)
+                              ? null
+                              : _submit,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: isDark
                                 ? const Color(0xFF415A77)
@@ -172,12 +224,20 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
                             foregroundColor: colorScheme.onPrimary,
                             disabledBackgroundColor: isDark
                                 ? const Color(0xFF2D3138)
-                                : theme.disabledColor.withValues(alpha: 0.2),
+                                : theme.disabledColor.withOpacity(0.2),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text('Register Device'),
+                          child: _submitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Register Device'),
                         ),
                       ),
                     ],
@@ -230,9 +290,6 @@ class _CodeBoxState extends State<_CodeBox> {
     final isDark = theme.brightness == Brightness.dark;
     const navy = Color(0xFF1B263B);
 
-    final fill = isDark ? const Color(0xFF3A3A3A) : const Color(0xFFD9D9D9);
-    final border = isDark ? const Color(0xFF4A4A4A) : const Color(0xFFC8C8C8);
-
     final titleMedium =
         theme.textTheme.titleMedium ?? const TextStyle(fontSize: 16);
 
@@ -259,6 +316,7 @@ class _CodeBoxState extends State<_CodeBox> {
         child: TextField(
           controller: widget.controller,
           focusNode: widget.focusNode,
+          enabled: true,
           textAlign: TextAlign.center,
           keyboardType: TextInputType.text,
           textCapitalization: TextCapitalization.characters,

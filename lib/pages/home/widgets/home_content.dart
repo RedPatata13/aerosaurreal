@@ -12,6 +12,10 @@ import '../../../components/navbar.dart';
 import 'home_header.dart';
 import 'no_device_content.dart';
 import '../dialogs/register_device_dialog.dart';
+import '/services/api/devices_api.dart';
+import '/services/api/readings_api.dart';
+import '/services/api/api_client.dart';
+import 'dart:async';
 
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
@@ -23,20 +27,30 @@ class HomeContent extends StatefulWidget {
 class _HomeContentState extends State<HomeContent> {
   int _selectedIndex = 0;
   int _selectedDeviceIndex = 0;
+  Timer? _pollTimer;
+  bool _loadingLatest = false;
+  int? _lastUpdatedAtSec;
 
-  // temp data
+  late final PageController _pageController;
+  late final DevicesApi _devicesApi;
+  late final ReadingsApi _readingsApi;
+
+  bool _devicesLoading = true;
+  String? _devicesError;
+
   List<Device> _deviceState = const [];
 
-  static const _defaultDeviceSpecs = [
-    {'id': 'AV501', 'name': 'Room 301'},
-    {'id': 'AV502', 'name': 'Room 302'},
-    {'id': 'AV503', 'name': 'Room 303'},
-  ];
+  DateTime _lastUpdated = DateTime.now();
 
   @override
   void initState() {
     super.initState();
+
     _pageController = PageController(initialPage: _selectedIndex);
+
+    final api = context.read<ApiClient>();
+    _devicesApi = DevicesApi(api);
+    _readingsApi = ReadingsApi(api);
 
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -46,21 +60,105 @@ class _HomeContentState extends State<HomeContent> {
       return;
     }
 
-    // temp
-    _deviceState = _defaultDevices();
-
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await context.read<UserStore>().loadOrCreate();
+      await _loadDevices();
     });
   }
 
+  Future<void> _loadLatestForSelectedDevice({bool silent = false}) async {
+    if (_deviceState.isEmpty) return;
+    if (_loadingLatest) return;
+    _loadingLatest = true;
+
+    final index = _selectedDeviceIndex.clamp(0, _deviceState.length - 1);
+    final device = _deviceState[index];
+
+    try {
+      final latest = await _readingsApi.getLatest(device.id);
+      final updatedAtSec = (latest['updatedAtSec'] as num?)?.toInt();
+
+      debugPrint("LATEST JSON: $latest");
+
+      if (silent && updatedAtSec != null && updatedAtSec == _lastUpdatedAtSec) {
+        return;
+      }
+      _lastUpdatedAtSec = updatedAtSec;
+      _lastUpdated = DateTime.now();
+
+      final normalized = <String, dynamic>{
+        ...latest,
+        'tempC': latest['tempC'] ?? latest['temperature'] ?? latest['temp'],
+        'vocsPpm': latest['vocsPpm'] ?? latest['voc_raw'] ?? latest['voc'],
+        'harmfulGasDetected':
+            latest['harmfulGasDetected'] ??
+            latest['gas_alert'] ??
+            latest['gasAlert'],
+
+        'pm25': latest['pm25'] ?? latest['pm2_5'] ?? latest['pm2.5'],
+        'pm10': latest['pm10'] ?? latest['pm_10'] ?? latest['pm10_ugm3'],
+
+        'aqi': latest['aqi'],
+        'aqiCategory': latest['aqiCategory'] ?? latest['aqiLabel'],
+        'aqiPercent': latest['aqiPercent'],
+
+        // keep updatedAtSec accessible if you want later
+        'updatedAtSec': updatedAtSec,
+      };
+
+      if (!mounted) return;
+      setState(() {
+        _deviceState = _deviceState
+            .map(
+              (d) => d.id == device.id ? d.applyLatestReading(normalized) : d,
+            )
+            .toList(growable: false);
+      });
+    } catch (e) {
+      if (!silent) {
+        debugPrint('❌ getLatest failed for ${device.id}: $e');
+      }
+    } finally {
+      _loadingLatest = false;
+    }
+  }
+
+  Future<void> _loadDevices() async {
+    try {
+      setState(() {
+        _devicesLoading = true;
+        _devicesError = null;
+      });
+
+      final items = await _devicesApi.listDevices();
+      final devices = items.map(Device.fromApi).toList(growable: false);
+
+      if (!mounted) return;
+      setState(() {
+        _deviceState = devices;
+        _devicesLoading = false;
+
+        if (_selectedDeviceIndex >= devices.length) {
+          _selectedDeviceIndex = 0;
+        }
+      });
+
+      _pollTimer?.cancel();
+      _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
+        await _loadLatestForSelectedDevice(silent: true);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _devicesError = e.toString();
+        _devicesLoading = false;
+      });
+    }
+  }
+
   Future<void> _refreshCurrentTab() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    setState(() {
-      // fetch data
-    });
+    await _loadLatestForSelectedDevice();
   }
 
   Future<void> _handleLogoutAndRedirect() async {
@@ -79,27 +177,17 @@ class _HomeContentState extends State<HomeContent> {
   }
 
   void _showRegisterDeviceDialog(String uid) {
-    showDialog<void>(
+    showDialog<bool>(
       context: context,
       builder: (context) => RegisterDeviceDialog(uid: uid),
-    );
-  }
-
-  List<Device> _defaultDevices() {
-    return List.generate(_defaultDeviceSpecs.length, (index) {
-      final spec = _defaultDeviceSpecs[index];
-      return Device.demoFromDb(
-        id: spec['id']!,
-        name: spec['name']!,
-        seed: index,
-      );
+    ).then((ok) async {
+      if (ok == true) await _loadDevices();
     });
   }
 
-  late final PageController _pageController;
-
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -112,7 +200,6 @@ class _HomeContentState extends State<HomeContent> {
     }
 
     final username = store.username;
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -121,6 +208,41 @@ class _HomeContentState extends State<HomeContent> {
         _handleLogoutAndRedirect();
       });
       return const Scaffold(body: SizedBox.shrink());
+    }
+
+    if (_devicesLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_devicesError != null) {
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Failed to load devices.',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(_devicesError!, textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 42,
+                  child: OutlinedButton(
+                    onPressed: _loadDevices,
+                    child: const Text('Retry'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     final devicesForUi = _deviceState;
@@ -148,22 +270,26 @@ class _HomeContentState extends State<HomeContent> {
                   return;
                 }
 
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => DeviceManagementPage(
-                      uid: uid,
-                      devices: devicesForUi,
-                      onDevicesChanged: (next) {
-                        setState(() {
-                          _deviceState = next;
-                          if (_selectedDeviceIndex >= next.length) {
-                            _selectedDeviceIndex = 0;
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                );
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (_) => DeviceManagementPage(
+                          uid: uid,
+                          devices: devicesForUi,
+                          onDevicesChanged: (next) {
+                            setState(() {
+                              _deviceState = next;
+                              if (_selectedDeviceIndex >= next.length) {
+                                _selectedDeviceIndex = 0;
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    )
+                    .then((_) async {
+                      await _loadDevices();
+                    });
               },
             ),
             Expanded(
@@ -177,13 +303,14 @@ class _HomeContentState extends State<HomeContent> {
                           Dashboard(
                             devices: devicesForUi,
                             selectedDeviceIndex: safeSelectedIndex,
-                            onSelectDevice: (index) {
+                            onSelectDevice: (index) async {
                               setState(() {
                                 _selectedDeviceIndex = index.clamp(
                                   0,
                                   devicesForUi.length - 1,
                                 );
                               });
+                              await _loadLatestForSelectedDevice();
                             },
                             onUpdateDevice: (updated) {
                               setState(() {

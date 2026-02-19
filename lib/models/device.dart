@@ -2,6 +2,31 @@ import 'package:flutter/material.dart';
 
 enum FanSpeed { slow, moderate, fast }
 
+extension FanSpeedX on FanSpeed {
+  String toApi() {
+    switch (this) {
+      case FanSpeed.slow:
+        return "SLOW";
+      case FanSpeed.moderate:
+        return "MODERATE";
+      case FanSpeed.fast:
+        return "FAST";
+    }
+  }
+
+  static FanSpeed fromApi(String value) {
+    switch (value.toUpperCase()) {
+      case "FAST":
+        return FanSpeed.fast;
+      case "MODERATE":
+        return FanSpeed.moderate;
+      case "SLOW":
+      default:
+        return FanSpeed.slow;
+    }
+  }
+}
+
 @immutable
 class Device {
   final String id;
@@ -16,12 +41,13 @@ class Device {
   final bool turnOffAutomatically;
   final FanSpeed fanSpeed;
 
-  // Monitoring demo fields
   final String pm25;
   final String pm10;
   final String voc;
+  final String temperature;
+  final String humidity;
+  final bool harmfulGasDetected;
 
-  // Insights demo fields.
   final List<int> aqiPeak7d;
   final List<int> aqiAverage7d;
   final List<double> purifierUsageHours7d;
@@ -46,6 +72,9 @@ class Device {
     required this.pm25,
     required this.pm10,
     required this.voc,
+    required this.temperature,
+    required this.humidity,
+    required this.harmfulGasDetected,
     required this.aqiPeak7d,
     required this.aqiAverage7d,
     required this.purifierUsageHours7d,
@@ -55,6 +84,24 @@ class Device {
     required this.directHoursToday,
     required this.energySavedPercent,
   });
+
+  Device copyWithFromPatch(Map<String, dynamic> patch) {
+    return copyWith(
+      isOn: patch.containsKey("power") ? patch["power"] as bool : null,
+      smartMode: patch.containsKey("smartMode")
+          ? patch["smartMode"] as bool
+          : null,
+      autoAdjustFanSpeed: patch.containsKey("autoAdjust")
+          ? patch["autoAdjust"] as bool
+          : null,
+      turnOffAutomatically: patch.containsKey("autoOff")
+          ? patch["autoOff"] as bool
+          : null,
+      fanSpeed: patch.containsKey("fanSpeed")
+          ? FanSpeedX.fromApi(patch["fanSpeed"] as String)
+          : null,
+    );
+  }
 
   Device copyWith({
     String? id,
@@ -71,6 +118,9 @@ class Device {
     String? pm25,
     String? pm10,
     String? voc,
+    String? temperature,
+    String? humidity,
+    bool? harmfulGasDetected,
     List<int>? aqiPeak7d,
     List<int>? aqiAverage7d,
     List<double>? purifierUsageHours7d,
@@ -95,6 +145,9 @@ class Device {
       pm25: pm25 ?? this.pm25,
       pm10: pm10 ?? this.pm10,
       voc: voc ?? this.voc,
+      temperature: temperature ?? this.temperature,
+      humidity: humidity ?? this.humidity,
+      harmfulGasDetected: harmfulGasDetected ?? this.harmfulGasDetected,
       aqiPeak7d: aqiPeak7d ?? this.aqiPeak7d,
       aqiAverage7d: aqiAverage7d ?? this.aqiAverage7d,
       purifierUsageHours7d: purifierUsageHours7d ?? this.purifierUsageHours7d,
@@ -108,87 +161,91 @@ class Device {
     );
   }
 
-  static Device demoFromDb({
-    required String id,
-    required String name,
-    int seed = 0,
-  }) {
-    final presets = <Device>[
-      const Device(
-        id: 'AV501',
-        name: 'Room 301',
-        isOn: true,
-        aqiLabel: 'Good',
-        aqiValue: 75,
-        aqiPercent: 0.75,
-        aqiRingColor: Color(0xFF3AB54A),
-        smartMode: true,
-        autoAdjustFanSpeed: true,
-        turnOffAutomatically: false,
-        fanSpeed: FanSpeed.moderate,
-        pm25: '17',
-        pm10: '13',
-        voc: '0.11',
-        aqiPeak7d: [150, 130, 120, 110, 100, 95, 120],
-        aqiAverage7d: [120, 110, 100, 95, 85, 80, 105],
-        purifierUsageHours7d: [14.4, 9.3, 15.5, 14.4, 2.2, 3.3, 14.5],
-        totalUsageHours7d: 71.6,
-        dailyUsageHours: 10.2,
-        timeInGoodOrModeratePercentToday: 85,
-        directHoursToday: 16.5,
-        energySavedPercent: 34,
-      ),
-      const Device(
-        id: 'AV502',
-        name: 'Room 302',
-        isOn: false,
-        aqiLabel: 'Moderate',
-        aqiValue: 61,
-        aqiPercent: 0.61,
-        aqiRingColor: Color(0xFFFFC107),
-        smartMode: false,
-        autoAdjustFanSpeed: false,
-        turnOffAutomatically: true,
-        fanSpeed: FanSpeed.slow,
-        pm25: '20',
-        pm10: '72',
-        voc: '0.26',
-        aqiPeak7d: [150, 135, 120, 115, 110, 100, 105],
-        aqiAverage7d: [125, 115, 105, 100, 98, 90, 95],
-        purifierUsageHours7d: [14.4, 9.3, 9.5, 15.5, 14.4, 15.2, 14.0],
-        totalUsageHours7d: 71.6,
-        dailyUsageHours: 10.2,
-        timeInGoodOrModeratePercentToday: 61,
-        directHoursToday: 14.0,
-        energySavedPercent: 25,
-      ),
-      const Device(
-        id: 'AV503',
-        name: 'Room 303',
-        isOn: true,
-        aqiLabel: 'Good',
-        aqiValue: 90,
-        aqiPercent: 0.90,
-        aqiRingColor: Color(0xFF3AB54A),
-        smartMode: true,
-        autoAdjustFanSpeed: false,
-        turnOffAutomatically: true,
-        fanSpeed: FanSpeed.fast,
-        pm25: '10',
-        pm10: '8',
-        voc: '0.09',
-        aqiPeak7d: [150, 110, 95, 90, 60, 50, 45],
-        aqiAverage7d: [110, 95, 80, 65, 50, 40, 35],
-        purifierUsageHours7d: [14.4, 9.3, 14.4, 3.5, 3.4, 3.4, 3.3],
-        totalUsageHours7d: 44.0,
-        dailyUsageHours: 6.3,
-        timeInGoodOrModeratePercentToday: 90,
-        directHoursToday: 3.3,
-        energySavedPercent: 65,
-      ),
-    ];
+  static Device minimal({required String id, required String name}) {
+    return Device(
+      id: id,
+      name: name,
+      isOn: false,
+      smartMode: false,
+      autoAdjustFanSpeed: false,
+      turnOffAutomatically: false,
+      fanSpeed: FanSpeed.slow,
+      aqiLabel: '—',
+      aqiValue: 0,
+      aqiPercent: 0.0,
+      aqiRingColor: const Color(0xFF9E9E9E),
+      pm25: '—',
+      pm10: '—',
+      voc: '—',
+      temperature: '—',
+      humidity: '—',
+      harmfulGasDetected: false,
+      aqiPeak7d: const [0, 0, 0, 0, 0, 0, 0],
+      aqiAverage7d: const [0, 0, 0, 0, 0, 0, 0],
+      purifierUsageHours7d: const [0, 0, 0, 0, 0, 0, 0],
+      totalUsageHours7d: 0.0,
+      dailyUsageHours: 0.0,
+      timeInGoodOrModeratePercentToday: 0,
+      directHoursToday: 0.0,
+      energySavedPercent: 0,
+    );
+  }
 
-    final base = presets[seed % presets.length];
-    return base.copyWith(id: id, name: name);
+  static Device fromApi(Map<String, dynamic> json) {
+    final id = (json['deviceId'] ?? json['DeviceId'] ?? json['id'] ?? '')
+        .toString();
+    final name = (json['name'] ?? id).toString();
+    return Device.minimal(id: id, name: name);
+  }
+
+  static Color ringColorForAqiCategory(String? category) {
+    final c = (category ?? '').toLowerCase();
+    if (c == 'good') {
+      return const Color(0xFF3AB54A);
+    }
+    if (c == 'moderate') {
+      return const Color(0xFFF4C20D);
+    }
+    if (c.contains('unhealthy')) {
+      return const Color(0xFFEF5350);
+    }
+    if (c == 'hazardous') {
+      return const Color(0xFF8E24AA);
+    }
+
+    return const Color(0xFF9E9E9E);
+  }
+
+  Device applyLatestReading(Map<String, dynamic> r) {
+    final aqi = (r['aqi'] as num?)?.round() ?? 0;
+    final category = (r['aqiCategory'] ?? r['aqiLabel'] ?? '—').toString();
+
+    final aqiPct0to100 = (r['aqiPercent'] as num?)?.toDouble();
+    final pct = aqiPct0to100 != null ? (aqiPct0to100 / 100.0) : 0.0;
+
+    String fmtNum(dynamic v, {int decimals = 1}) {
+      if (v == null) return '—';
+      if (v is num) {
+        if (decimals == 0) return v.round().toString();
+        return v.toStringAsFixed(decimals);
+      }
+      final parsed = num.tryParse(v.toString());
+      if (parsed == null) return '—';
+      if (decimals == 0) return parsed.round().toString();
+      return parsed.toStringAsFixed(decimals);
+    }
+
+    return copyWith(
+      aqiValue: aqi,
+      aqiLabel: category,
+      aqiPercent: pct.clamp(0.0, 1.0),
+      aqiRingColor: ringColorForAqiCategory(category),
+      pm25: fmtNum(r['pm25'], decimals: 0),
+      pm10: fmtNum(r['pm10'], decimals: 0),
+      voc: fmtNum(r['vocsPpm'], decimals: 2),
+      temperature: fmtNum(r['tempC'], decimals: 1),
+      humidity: fmtNum(r['humidity'], decimals: 0),
+      harmfulGasDetected: (r['harmfulGasDetected'] as bool?) ?? false,
+    );
   }
 }

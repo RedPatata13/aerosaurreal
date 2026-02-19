@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -23,11 +24,21 @@ class ApiClient {
     if (auth) {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('User not logged in');
-      final token = await user.getIdToken(true);
+      final token = await user.getIdToken();
       headers['Authorization'] = 'Bearer $token';
     }
 
     return headers;
+  }
+
+  Map<String, dynamic> _decodeJsonBody(String body) {
+    final trimmed = body.trim();
+    if (trimmed.isEmpty) return <String, dynamic>{};
+
+    final decoded = jsonDecode(trimmed);
+    if (decoded is Map<String, dynamic>) return decoded;
+
+    throw Exception('Unexpected JSON response type: ${decoded.runtimeType}');
   }
 
   Future<http.Response> get(String path, {bool auth = true}) async {
@@ -42,7 +53,7 @@ class ApiClient {
     return _http.post(
       _uri(path),
       headers: await _headers(auth: auth),
-      body: jsonEncode(body ?? {}),
+      body: jsonEncode(body ?? <String, dynamic>{}),
     );
   }
 
@@ -54,7 +65,64 @@ class ApiClient {
     return _http.put(
       _uri(path),
       headers: await _headers(auth: auth),
-      body: jsonEncode(body ?? {}),
+      body: jsonEncode(body ?? <String, dynamic>{}),
     );
+  }
+
+  Future<http.Response> delete(String path, {bool auth = true}) async {
+    return _http.delete(_uri(path), headers: await _headers(auth: auth));
+  }
+
+  Future<Map<String, dynamic>> getJson(String path, {bool auth = true}) async {
+    debugPrint('➡️ GET ${_uri(path)}');
+
+    final res = await get(path, auth: auth);
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Request failed: ${res.statusCode} ${res.body}');
+    }
+
+    return _decodeJsonBody(res.body);
+  }
+
+  Future<Map<String, dynamic>> postJson(
+    String path, {
+    required Map<String, dynamic> body,
+    bool auth = true,
+  }) async {
+    final res = await post(path, body: body, auth: auth);
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Request failed: ${res.statusCode} ${res.body}');
+    }
+
+    return _decodeJsonBody(res.body);
+  }
+
+  Future<Map<String, dynamic>> putJson(
+    String path, {
+    required Map<String, dynamic> body,
+    bool auth = true,
+  }) async {
+    final res = await put(path, body: body, auth: auth);
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Request failed: ${res.statusCode} ${res.body}');
+    }
+
+    return _decodeJsonBody(res.body);
+  }
+
+  Future<Map<String, dynamic>> deleteJson(
+    String path, {
+    bool auth = true,
+  }) async {
+    final res = await delete(path, auth: auth);
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Request failed: ${res.statusCode} ${res.body}');
+    }
+
+    return _decodeJsonBody(res.body);
   }
 }

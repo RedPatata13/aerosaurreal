@@ -5,6 +5,7 @@ class GasCard extends StatelessWidget {
   final Color borderColor;
   final Color titleColor;
   final Color bodyColor;
+  final bool harmfulGasDetected;
 
   const GasCard({
     super.key,
@@ -12,11 +13,23 @@ class GasCard extends StatelessWidget {
     required this.borderColor,
     required this.titleColor,
     required this.bodyColor,
+    required this.harmfulGasDetected,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final detected = harmfulGasDetected;
+    final badgeBg =
+        (detected ? const Color(0xFFEF5350) : const Color(0xFF3AB54A))
+            .withValues(alpha: 0.18);
+    final badgeTextColor = detected
+        ? const Color(0xFFEF5350)
+        : const Color(0xFF3AB54A);
+    final badgeText = detected ? 'Detected' : 'Not Detected';
+    final desc = detected
+        ? 'Harmful gases detected. Improve ventilation.'
+        : 'Air is safe from harmful gases.';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -44,13 +57,13 @@ class GasCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF3AB54A).withValues(alpha: 0.18),
+              color: badgeBg,
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Text(
-              'Not Detected',
+            child: Text(
+              badgeText,
               style: TextStyle(
-                color: Color(0xFF3AB54A),
+                color: badgeTextColor,
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
               ),
@@ -58,7 +71,7 @@ class GasCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Air is safe from harmful gases.',
+            desc,
             style: theme.textTheme.bodySmall?.copyWith(color: bodyColor),
           ),
         ],
