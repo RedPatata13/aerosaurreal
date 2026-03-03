@@ -13,6 +13,7 @@ class Dashboard extends StatelessWidget {
   final ValueChanged<int> onSelectDevice;
   final ValueChanged<Device> onUpdateDevice;
   final Future<void> Function() onRefresh;
+  final Future<void> Function(Map<String, dynamic> patch) onControlChanged;
 
   const Dashboard({
     super.key,
@@ -21,6 +22,7 @@ class Dashboard extends StatelessWidget {
     required this.onSelectDevice,
     required this.onUpdateDevice,
     required this.onRefresh,
+    required this.onControlChanged,
   });
 
   @override
@@ -93,7 +95,7 @@ class Dashboard extends StatelessWidget {
                     color: theme.colorScheme.primary,
                     onSelect: () => onSelectDevice(index),
                     onTogglePower: () =>
-                        onUpdateDevice(device.copyWith(isOn: !device.isOn)),
+                        onControlChanged({"power": !device.isOn}),
                   );
                 },
               ),
@@ -116,9 +118,8 @@ class Dashboard extends StatelessWidget {
                               color: theme.colorScheme.onSurface,
                               fontWeight: FontWeight.w600,
                             ),
-                    onChanged: (value) => onUpdateDevice(
-                      selectedDevice.copyWith(smartMode: value),
-                    ),
+                    onChanged: (value) =>
+                        onControlChanged({"smartMode": value}),
                   ),
                   Divider(color: theme.dividerColor),
                   if (selectedDevice.smartMode) ...[
@@ -131,9 +132,8 @@ class Dashboard extends StatelessWidget {
                                 color: theme.colorScheme.onSurface,
                                 fontWeight: FontWeight.w600,
                               ),
-                      onChanged: (value) => onUpdateDevice(
-                        selectedDevice.copyWith(autoAdjustFanSpeed: value),
-                      ),
+                      onChanged: (value) =>
+                          onControlChanged({"autoAdjust": value}),
                     ),
                     Divider(color: theme.dividerColor),
                     ToggleRow(
@@ -145,9 +145,8 @@ class Dashboard extends StatelessWidget {
                                 color: theme.colorScheme.onSurface,
                                 fontWeight: FontWeight.w600,
                               ),
-                      onChanged: (value) => onUpdateDevice(
-                        selectedDevice.copyWith(turnOffAutomatically: value),
-                      ),
+                      onChanged: (value) =>
+                          onControlChanged({"autoOff": value}),
                     ),
                   ],
                 ],
@@ -171,7 +170,7 @@ class Dashboard extends StatelessWidget {
               child: FanSpeedSelector(
                 value: selectedDevice.fanSpeed,
                 onChanged: (value) =>
-                    onUpdateDevice(selectedDevice.copyWith(fanSpeed: value)),
+                    onControlChanged({"fanSpeed": value.toApi()}),
                 surfaceColor: theme.colorScheme.surface,
                 borderColor: theme.dividerColor,
                 activeColor: theme.colorScheme.primary,

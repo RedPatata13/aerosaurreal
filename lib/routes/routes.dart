@@ -6,4 +6,5 @@ class AppRoutes {
   static const settings = '/settings';
   static const deviceManagement = '/device-management';
   static const notifications = '/notifications';
+  static const qrScanner = '/qr-scanner';
 }

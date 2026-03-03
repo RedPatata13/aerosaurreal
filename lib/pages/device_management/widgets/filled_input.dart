@@ -16,7 +16,7 @@ class FilledInput extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      height: 40,
+      height: 47,
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(10),

@@ -268,6 +268,24 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     }
   }
 
+  Future<void> _openQrScanner() async {
+    final result = await Navigator.pushNamed(context, AppRoutes.qrScanner);
+
+    if (result is String && result.isNotEmpty) {
+      _deviceIdController.text = result;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      await _submitNewDevice();
+
+      if (mounted) Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -315,7 +333,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                           FilledInput(
                             controller: _deviceIdController,
                             fill: theme.inputDecorationTheme.fillColor!,
-                            hint: 'Enter Device ID (e.g. 2024-AVXXXXXX)',
+                            hint: 'Enter Device ID (e.g. AIR123)',
                           ),
                           const SizedBox(height: 10),
                           FilledInput(
@@ -326,7 +344,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                           const SizedBox(height: 12),
                           SizedBox(
                             width: double.infinity,
-                            height: 42,
+                            height: 47,
                             child: ElevatedButton(
                               onPressed: _saving ? null : _submitNewDevice,
                               style: ElevatedButton.styleFrom(
@@ -338,6 +356,23 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                               ),
                               child: Text(
                                 _saving ? 'Adding...' : 'Register Device',
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 47,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.qr_code_scanner),
+                              label: const Text('Scan QR Code'),
+                              onPressed: _openQrScanner,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.primary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
                               ),
                             ),
                           ),
