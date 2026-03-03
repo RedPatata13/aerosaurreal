@@ -16,6 +16,8 @@ import '/services/api/devices_api.dart';
 import '/services/api/readings_api.dart';
 import '/services/api/api_client.dart';
 import 'dart:async';
+import '/services/api/control_api.dart';
+import '/services/api/endpoints.dart';
 
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
@@ -30,16 +32,14 @@ class _HomeContentState extends State<HomeContent> {
   Timer? _pollTimer;
   bool _loadingLatest = false;
   int? _lastUpdatedAtSec;
-
   late final PageController _pageController;
   late final DevicesApi _devicesApi;
   late final ReadingsApi _readingsApi;
-
+  late final ControlApi _controlApi;
+  final Set<String> _controlPending = <String>{};
   bool _devicesLoading = true;
   String? _devicesError;
-
   List<Device> _deviceState = const [];
-
   DateTime _lastUpdated = DateTime.now();
 
   @override
@@ -51,6 +51,7 @@ class _HomeContentState extends State<HomeContent> {
     final api = context.read<ApiClient>();
     _devicesApi = DevicesApi(api);
     _readingsApi = ReadingsApi(api);
+    _controlApi = ControlApi(api);
 
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -103,7 +104,6 @@ class _HomeContentState extends State<HomeContent> {
         'aqiCategory': latest['aqiCategory'] ?? latest['aqiLabel'],
         'aqiPercent': latest['aqiPercent'],
 
-        // keep updatedAtSec accessible if you want later
         'updatedAtSec': updatedAtSec,
       };
 
@@ -124,6 +124,71 @@ class _HomeContentState extends State<HomeContent> {
     }
   }
 
+  Future<void> _loadControlForDevice(
+    String deviceId, {
+    bool silent = true,
+  }) async {
+    try {
+      final control = await _controlApi.getControl(deviceId);
+
+      if (!mounted) return;
+      setState(() {
+        _deviceState = _deviceState
+            .map((d) => d.id == deviceId ? d.copyWithFromPatch(control) : d)
+            .toList(growable: false);
+      });
+    } catch (e) {
+      if (!silent) {
+        debugPrint('❌ getControl failed for $deviceId: $e');
+      }
+    }
+  }
+
+  Future<void> _updateControlForSelectedDevice(
+    Map<String, dynamic> patch,
+  ) async {
+    if (_deviceState.isEmpty) return;
+
+    final index = _selectedDeviceIndex.clamp(0, _deviceState.length - 1);
+    final device = _deviceState[index];
+    final deviceId = device.id;
+
+    debugPrint("CURRENT UID: ${FirebaseAuth.instance.currentUser?.uid}");
+    debugPrint("TRYING CONTROL FOR DEVICE: $deviceId");
+
+    if (_controlPending.contains(deviceId)) return;
+
+    setState(() {
+      _controlPending.add(deviceId);
+      _deviceState = _deviceState
+          .map((d) => d.id == deviceId ? d.copyWithFromPatch(patch) : d)
+          .toList(growable: false);
+    });
+
+    try {
+      final updated = await _controlApi.updateControl(deviceId, patch: patch);
+
+      if (!mounted) return;
+      setState(() {
+        _deviceState = _deviceState
+            .map((d) => d.id == deviceId ? d.copyWithFromPatch(updated) : d)
+            .toList(growable: false);
+      });
+    } catch (e) {
+      await _loadControlForDevice(deviceId, silent: false);
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Control update failed: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _controlPending.remove(deviceId));
+      }
+    }
+  }
+
   Future<void> _loadDevices() async {
     try {
       setState(() {
@@ -135,6 +200,7 @@ class _HomeContentState extends State<HomeContent> {
       final devices = items.map(Device.fromApi).toList(growable: false);
 
       if (!mounted) return;
+
       setState(() {
         _deviceState = devices;
         _devicesLoading = false;
@@ -143,6 +209,11 @@ class _HomeContentState extends State<HomeContent> {
           _selectedDeviceIndex = 0;
         }
       });
+
+      if (devices.isNotEmpty) {
+        final selectedIndex = _selectedDeviceIndex.clamp(0, devices.length - 1);
+        await _loadControlForDevice(devices[selectedIndex].id);
+      }
 
       _pollTimer?.cancel();
       _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) async {
@@ -159,6 +230,10 @@ class _HomeContentState extends State<HomeContent> {
 
   Future<void> _refreshCurrentTab() async {
     await _loadLatestForSelectedDevice();
+    if (_deviceState.isNotEmpty) {
+      final index = _selectedDeviceIndex.clamp(0, _deviceState.length - 1);
+      await _loadControlForDevice(_deviceState[index].id, silent: false);
+    }
   }
 
   Future<void> _handleLogoutAndRedirect() async {
@@ -303,6 +378,8 @@ class _HomeContentState extends State<HomeContent> {
                           Dashboard(
                             devices: devicesForUi,
                             selectedDeviceIndex: safeSelectedIndex,
+                            onControlChanged: (patch) =>
+                                _updateControlForSelectedDevice(patch),
                             onSelectDevice: (index) async {
                               setState(() {
                                 _selectedDeviceIndex = index.clamp(
@@ -310,7 +387,11 @@ class _HomeContentState extends State<HomeContent> {
                                   devicesForUi.length - 1,
                                 );
                               });
+
+                              final selected =
+                                  devicesForUi[_selectedDeviceIndex];
                               await _loadLatestForSelectedDevice();
+                              await _loadControlForDevice(selected.id);
                             },
                             onUpdateDevice: (updated) {
                               setState(() {

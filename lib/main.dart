@@ -1,3 +1,4 @@
+import 'package:aerosaur_2nd_sem/pages/device_management/qr_scanner_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'firebase_options.dart';
@@ -81,6 +82,8 @@ class _MyAppState extends State<MyApp> {
           AppRoutes.home: (_) => const LocationGate(child: HomePage()),
           AppRoutes.settings: (_) => const SettingsPage(),
           AppRoutes.notifications: (_) => const NotificationsPage(),
+          AppRoutes.qrScanner: (_) =>
+              const LocationGate(child: QrScannerScreen()),
         },
         onGenerateRoute: (settings) {
           switch (settings.name) {
