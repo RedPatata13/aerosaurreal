@@ -40,6 +40,21 @@ class Insights extends StatelessWidget {
           color: theme.colorScheme.onSurface.withOpacity(0.7),
         );
 
+    final now = DateTime.now();
+
+    final days = List.generate(7, (index) {
+      final date = now.subtract(Duration(days: 6 - index));
+      return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][date.weekday -
+          1];
+    });
+
+    final Map<String, double> valuesByDay = {
+      for (int i = 0; i < days.length; i++)
+        days[i]: device.purifierUsageHours7d.length > i
+            ? device.purifierUsageHours7d[i]
+            : 0.0,
+    };
+
     final cardColor = theme.cardTheme.color ?? theme.colorScheme.surface;
     final borderColor = theme.dividerColor;
 
@@ -114,7 +129,7 @@ class Insights extends StatelessWidget {
                 children: [
                   const SizedBox(height: 10),
                   SingleBarChart(
-                    values: device.purifierUsageHours7d,
+                    valuesByDay: valuesByDay,
                     maxValue: 16.5,
                     height: 160,
                     barColor: graphPrimary,

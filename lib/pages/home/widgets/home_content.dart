@@ -18,6 +18,7 @@ import '/services/api/api_client.dart';
 import 'dart:async';
 import '/services/api/control_api.dart';
 import '/services/api/endpoints.dart';
+import '/services/api/analytics_api.dart';
 
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
@@ -36,6 +37,7 @@ class _HomeContentState extends State<HomeContent> {
   late final DevicesApi _devicesApi;
   late final ReadingsApi _readingsApi;
   late final ControlApi _controlApi;
+  late final AnalyticsApi _analyticsApi;
   final Set<String> _controlPending = <String>{};
   bool _devicesLoading = true;
   String? _devicesError;
@@ -52,6 +54,7 @@ class _HomeContentState extends State<HomeContent> {
     _devicesApi = DevicesApi(api);
     _readingsApi = ReadingsApi(api);
     _controlApi = ControlApi(api);
+    _analyticsApi = AnalyticsApi(api);
 
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -121,6 +124,60 @@ class _HomeContentState extends State<HomeContent> {
       }
     } finally {
       _loadingLatest = false;
+    }
+  }
+
+  Future<void> _loadAnalyticsForSelectedDevice() async {
+    if (_deviceState.isEmpty) return;
+
+    final index = _selectedDeviceIndex.clamp(0, _deviceState.length - 1);
+    final device = _deviceState[index];
+
+    try {
+      final data = await _analyticsApi.getAnalytics7d(device.id);
+
+      debugPrint("ANALYTICS RESPONSE: $data");
+
+      final summary = data['summary'] ?? {};
+      final trend = data['aqiTrend'] ?? [];
+      final usage = data['usageTrend'] ?? [];
+
+      final peakList = trend
+          .map<int>((e) => (e['peakAQI'] as num? ?? 0).toInt())
+          .toList();
+
+      final avgList = trend
+          .map<int>((e) => (e['avgAQI'] as num? ?? 0).toInt())
+          .toList();
+
+      final usageList = usage
+          .map<double>((e) => (e['hours'] as num? ?? 0).toDouble())
+          .toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        _deviceState = _deviceState
+            .map((d) {
+              if (d.id != device.id) return d;
+
+              return d.copyWith(
+                aqiPeak7d: peakList,
+                aqiAverage7d: avgList,
+                purifierUsageHours7d: usageList,
+                totalUsageHours7d: (summary['totalUsageHours7d'] ?? 0)
+                    .toDouble(),
+                dailyUsageHours: usageList.isNotEmpty ? usageList.last : 0,
+                timeInGoodOrModeratePercentToday:
+                    summary['goodPercentage'] ?? 0,
+                directHoursToday: (summary['directHoursToday'] ?? 0).toDouble(),
+                energySavedPercent: summary['energySavedPercent'] ?? 0,
+              );
+            })
+            .toList(growable: false);
+      });
+    } catch (e) {
+      debugPrint("❌ Analytics load failed: $e");
     }
   }
 
@@ -230,9 +287,9 @@ class _HomeContentState extends State<HomeContent> {
 
   Future<void> _refreshCurrentTab() async {
     await _loadLatestForSelectedDevice();
-    if (_deviceState.isNotEmpty) {
-      final index = _selectedDeviceIndex.clamp(0, _deviceState.length - 1);
-      await _loadControlForDevice(_deviceState[index].id, silent: false);
+
+    if (_selectedIndex == 2) {
+      await _loadAnalyticsForSelectedDevice();
     }
   }
 
@@ -372,7 +429,12 @@ class _HomeContentState extends State<HomeContent> {
                   ? PageView(
                       controller: _pageController,
                       physics: const BouncingScrollPhysics(),
-                      onPageChanged: (i) => setState(() => _selectedIndex = i),
+                      onPageChanged: (i) async {
+                        setState(() => _selectedIndex = i);
+                        if (i == 2) {
+                          await _loadAnalyticsForSelectedDevice();
+                        }
+                      },
                       children: [
                         if (selectedDevice != null)
                           Dashboard(
