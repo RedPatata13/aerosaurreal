@@ -36,7 +36,19 @@ class ApiClient {
     if (trimmed.isEmpty) return <String, dynamic>{};
 
     final decoded = jsonDecode(trimmed);
-    if (decoded is Map<String, dynamic>) return decoded;
+
+    if (decoded is Map<String, dynamic>) {
+      if (decoded.containsKey('body')) {
+        final inner = decoded['body'];
+        if (inner is String) {
+          return jsonDecode(inner);
+        }
+        if (inner is Map<String, dynamic>) {
+          return inner;
+        }
+      }
+      return decoded;
+    }
 
     throw Exception('Unexpected JSON response type: ${decoded.runtimeType}');
   }
