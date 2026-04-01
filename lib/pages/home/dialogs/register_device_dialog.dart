@@ -1,13 +1,12 @@
 import 'package:aerosaur_2nd_sem/services/api/api_client.dart';
+import 'package:aerosaur_2nd_sem/services/api/devices_api.dart';
+import 'package:aerosaur_2nd_sem/services/device/device_setup_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '/services/api/devices_api.dart';
 
 class RegisterDeviceDialog extends StatefulWidget {
-  final String uid;
-
-  const RegisterDeviceDialog({super.key, required this.uid});
+  const RegisterDeviceDialog({super.key});
 
   @override
   State<RegisterDeviceDialog> createState() => _RegisterDeviceDialogState();
@@ -17,7 +16,7 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
   final _controllers = List.generate(6, (_) => TextEditingController());
   final _focusNodes = List.generate(6, (_) => FocusNode());
 
-  late final DevicesApi _api;
+  late final DeviceSetupService _setupService;
 
   bool _submitting = false;
   String? _errorText;
@@ -25,7 +24,9 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
   @override
   void initState() {
     super.initState();
-    _api = DevicesApi(context.read<ApiClient>());
+    _setupService = DeviceSetupService(
+      DevicesApi(context.read<ApiClient>()),
+    );
   }
 
   @override
@@ -69,7 +70,6 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
     if (!_isComplete || _submitting) return;
 
     final code = _code;
-    final deviceId = code;
 
     setState(() {
       _submitting = true;
@@ -77,14 +77,25 @@ class _RegisterDeviceDialogState extends State<RegisterDeviceDialog> {
     });
 
     try {
-      await _api.registerDevice(deviceId: deviceId, name: null);
+      final registered = await _setupService.registerDevice(
+        rawCode: code,
+        name: null,
+      );
 
       if (!mounted) return;
       Navigator.of(context).pop(true);
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Device $deviceId registered!')));
+      ).showSnackBar(
+        SnackBar(content: Text('Device ${registered.id} registered!')),
+      );
+    } on FormatException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _errorText = e.message;
+      });
     } catch (e) {
       if (!mounted) return;
       setState(() {

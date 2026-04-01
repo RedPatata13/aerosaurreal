@@ -1,15 +1,17 @@
 import 'package:aerosaur_2nd_sem/routes/routes.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '/../models/device.dart';
-import '/../services/api/devices_api.dart';
-import 'widgets/filled_input.dart';
-import 'widgets/device_row.dart';
-import './../home/widgets/home_header.dart';
-import 'widgets/dialog_button.dart';
-import '../../services/ble/ble_provisioning_service.dart';
 import 'package:provider/provider.dart';
-import '/services/api/api_client.dart';
+
+import '../../components/wifi_password_dialog.dart';
+import '../../models/device.dart';
+import '../../services/api/api_client.dart';
+import '../../services/api/devices_api.dart';
+import '../../services/device/device_setup_service.dart';
+import '../home/widgets/home_header.dart';
+import 'widgets/device_row.dart';
+import 'widgets/dialog_button.dart';
+import 'widgets/filled_input.dart';
 
 class DeviceManagementPage extends StatefulWidget {
   final String uid;
@@ -31,7 +33,8 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
   final _deviceIdController = TextEditingController();
   final _deviceNameController = TextEditingController();
 
-  late final DevicesApi _api;
+  late final DevicesApi _devicesApi;
+  late final DeviceSetupService _setupService;
 
   bool _saving = false;
   bool _loading = true;
@@ -42,9 +45,14 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
   @override
   void initState() {
     super.initState();
-    _api = DevicesApi(context.read<ApiClient>());
-    _devices = widget.devices;
-    _loadDevices();
+    final apiClient = context.read<ApiClient>();
+    _devicesApi = DevicesApi(apiClient);
+    _setupService = DeviceSetupService(_devicesApi);
+    _devices = List<Device>.from(widget.devices);
+    _loading = widget.devices.isEmpty;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadDevices(silent: widget.devices.isNotEmpty);
+    });
   }
 
   @override
@@ -54,15 +62,17 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     super.dispose();
   }
 
-  Future<void> _loadDevices() async {
+  Future<void> _loadDevices({bool silent = false}) async {
     try {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
+      if (!silent) {
+        setState(() {
+          _loading = true;
+          _error = null;
+        });
+      }
 
-      final items = await _api.listDevices();
-      final next = items.map(Device.fromApi).toList();
+      final items = await _devicesApi.listDevices();
+      final next = items.map(Device.fromApi).toList(growable: false);
 
       if (!mounted) return;
       setState(() {
@@ -73,20 +83,25 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
       widget.onDevicesChanged(next);
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
+      if (!silent || _devices.isEmpty) {
+        setState(() {
+          _error = e.toString();
+          _loading = false;
+        });
+      }
     }
   }
 
   Future<void> _refreshDevices() => _loadDevices();
 
-  Future<void> _submitNewDevice() async {
-    final id = _deviceIdController.text.trim();
+  Future<void> _submitNewDevice({
+    String? rawCode,
+    bool openProvisionAfterRegister = true,
+  }) async {
+    final rawInput = rawCode ?? _deviceIdController.text.trim();
     final name = _deviceNameController.text.trim();
 
-    if (id.isEmpty || _saving) {
+    if (rawInput.isEmpty || _saving) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Device ID is required.')));
@@ -96,14 +111,32 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     setState(() => _saving = true);
 
     try {
-      await _api.registerDevice(deviceId: id, name: name.isEmpty ? null : name);
-      await _loadDevices();
+      final registered = await _setupService.registerDevice(
+        rawCode: rawInput,
+        name: name.isEmpty ? null : name,
+      );
+      await _loadDevices(silent: _devices.isNotEmpty);
 
       if (!mounted) return;
-      setState(() => _saving = false);
 
       _deviceIdController.clear();
       _deviceNameController.clear();
+      setState(() => _saving = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Device ${registered.id} registered.')),
+      );
+
+      if (openProvisionAfterRegister) {
+        await _provisionAfterRegistration(registered.id);
+      }
+    } on FormatException catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -114,66 +147,71 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     }
   }
 
-  Future<void> _showProvisionDialog(String deviceId) async {
-    final ssidCtrl = TextEditingController();
-    final passCtrl = TextEditingController();
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Provision Wi-Fi"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: ssidCtrl,
-              decoration: const InputDecoration(hintText: "Wi-Fi SSID"),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: passCtrl,
-              decoration: const InputDecoration(hintText: "Wi-Fi Password"),
-              obscureText: true,
-            ),
-          ],
+  Future<void> _provisionAfterRegistration(String deviceId) async {
+    try {
+      await _setupService.autoProvisionIfPossible(rawCode: deviceId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Device connected using saved Wi-Fi credentials.'),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("Cancel"),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Provision"),
-          ),
-        ],
+      );
+      await Future.delayed(const Duration(seconds: 3));
+      await _loadDevices(silent: true);
+    } catch (_) {
+      await _showWifiPasswordDialog(deviceId);
+    }
+  }
+
+  Future<void> _showWifiPasswordDialog(String deviceId) async {
+    final wifiName = await _setupService.getSuggestedWifiName();
+    if (wifiName == null || wifiName.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connect your phone to Wi-Fi first.'),
+        ),
+      );
+      return;
+    }
+
+    final saved = await _setupService.getSavedCredentialsForCurrentWifi();
+    final result = await showDialog<WifiPasswordDialogResult>(
+      context: context,
+      builder: (_) => WifiPasswordDialog(
+        title: 'Provision Wi-Fi',
+        wifiName: wifiName,
+        actionLabel: 'Provision',
+        initialPassword: saved?.password,
       ),
     );
 
-    if (ok != true) return;
+    if (result == null) return;
 
-    final ssid = ssidCtrl.text.trim();
-    final pass = passCtrl.text;
+    final pass = result.password;
 
-    if (ssid.isEmpty) {
+    if (pass.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("SSID is required")));
+      ).showSnackBar(
+        const SnackBar(content: Text('Wi-Fi password is required')),
+      );
       return;
     }
 
     try {
-      await BleProvisioningService.provisionWifi(
-        deviceId: deviceId,
-        ssid: ssid,
+      await _setupService.saveWifiCredentials(ssid: wifiName, password: pass);
+      await _setupService.provisionWifi(
+        rawCode: deviceId,
+        ssid: wifiName,
         pass: pass,
       );
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Provision sent! Device will reboot and connect."),
+          content: Text('Provision sent! Device will reboot and connect.'),
         ),
       );
 
@@ -183,14 +221,14 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text("Provision failed: $e")));
+      ).showSnackBar(SnackBar(content: Text('Provision failed: $e')));
     }
   }
 
   Future<void> _unregisterDevice(String deviceId) async {
     try {
-      await _api.unregisterDevice(deviceId);
-      await _loadDevices();
+      await _devicesApi.unregisterDevice(deviceId);
+      await _loadDevices(silent: _devices.isNotEmpty);
       if (!mounted) return;
 
       ScaffoldMessenger.of(
@@ -271,8 +309,10 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
   Future<void> _openQrScanner() async {
     final result = await Navigator.pushNamed(context, AppRoutes.qrScanner);
 
-    if (result is String && result.isNotEmpty) {
-      _deviceIdController.text = result;
+    if (result is String && result.trim().isNotEmpty) {
+      _deviceIdController.text = result.trim();
+
+      String? registeredDeviceId;
 
       showDialog(
         context: context,
@@ -280,9 +320,44 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      await _submitNewDevice();
+      try {
+        try {
+          final registered = await _setupService.registerDevice(
+            rawCode: result.trim(),
+            name: _deviceNameController.text.trim().isEmpty
+                ? null
+                : _deviceNameController.text.trim(),
+          );
+          registeredDeviceId = registered.id;
+          await _loadDevices(silent: _devices.isNotEmpty);
 
-      if (mounted) Navigator.pop(context);
+          if (!mounted) return;
+          _deviceIdController.clear();
+          _deviceNameController.clear();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Device ${registered.id} registered.')),
+          );
+        } on FormatException catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.message)));
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to add device: $e')));
+        }
+      } finally {
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
+
+      if (registeredDeviceId != null && mounted) {
+        await _provisionAfterRegistration(registeredDeviceId);
+      }
     }
   }
 
@@ -300,9 +375,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
             HomeHeader(
               username: username,
               iconColor: theme.colorScheme.onSurface,
-              onRegisterDevice: () {
-                Navigator.of(context).pushNamed(AppRoutes.deviceManagement);
-              },
+              onRegisterDevice: () {},
             ),
             const SizedBox(height: 12),
             Expanded(
@@ -346,7 +419,9 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                             width: double.infinity,
                             height: 47,
                             child: ElevatedButton(
-                              onPressed: _saving ? null : _submitNewDevice,
+                              onPressed: _saving
+                                  ? null
+                                  : () => _submitNewDevice(),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: theme.colorScheme.primary,
                                 foregroundColor: Colors.white,
@@ -418,7 +493,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                               title: device.name,
                               subtitle: 'ID: ${device.id}',
                               onDelete: () => _confirmDelete(device.id),
-                              onTap: () => _showProvisionDialog(device.id),
+                              onTap: () => _provisionAfterRegistration(device.id),
                               danger: Colors.red,
                               borderColor: theme.dividerColor,
                               titleColor: theme.colorScheme.onSurface,

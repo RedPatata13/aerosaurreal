@@ -1,4 +1,4 @@
-import '/../models/device.dart';
+import '../../models/device.dart';
 
 class DeviceManagementArgs {
   final String uid;

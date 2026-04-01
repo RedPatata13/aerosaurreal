@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+
+import '../../services/device/device_code_parser.dart';
 
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({super.key});
@@ -38,8 +39,17 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       final String? code = barcodeCapture.barcodes.first.rawValue;
 
       if (code != null) {
-        if (mounted) {
-          Navigator.pop(context, code.trim());
+        try {
+          final normalized = DeviceCodeParser.normalize(code);
+          if (mounted) {
+            Navigator.pop(context, normalized);
+          }
+        } on FormatException catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(e.message)));
+          }
         }
       }
     } else {
@@ -78,11 +88,20 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                     final String? code = barcode.rawValue;
 
                     if (code != null) {
-                      _isScanned = true;
-                      await _controller.stop();
-                      await Future.delayed(const Duration(milliseconds: 300));
-                      if (mounted) {
-                        Navigator.pop(context, code.trim());
+                      try {
+                        final normalized = DeviceCodeParser.normalize(code);
+                        _isScanned = true;
+                        await _controller.stop();
+                        await Future.delayed(const Duration(milliseconds: 300));
+                        if (mounted) {
+                          Navigator.pop(context, normalized);
+                        }
+                      } on FormatException catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(e.message)));
+                        }
                       }
                     }
                   },

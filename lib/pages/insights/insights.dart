@@ -91,6 +91,7 @@ class Insights extends StatelessWidget {
                   DualBarChart(
                     peak: device.aqiPeak7d,
                     avg: device.aqiAverage7d,
+                    labels: days,
                     maxValue: 150,
                     height: 140,
                     peakColor: graphSecondary,
