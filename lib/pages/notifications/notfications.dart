@@ -1,8 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../routes/routes.dart';
 import '../../../models/device.dart';
+import '../device_management/device_management_args.dart';
 import './../home/widgets/home_header.dart';
-import './../device_management/device_management.dart';
 import 'widgets/toggle_section.dart';
 import 'widgets/notification_card.dart';
 
@@ -57,10 +58,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
   List<Device> devicesState = [];
   int selectedDeviceIndex = 0;
 
-  void _showRegisterDeviceDialog(String uid) {
-    showDialog(
-      context: context,
-      builder: (_) => DeviceManagementPage(
+  Future<void> _openDeviceManagement(String uid) async {
+    await Navigator.of(context).pushNamed(
+      AppRoutes.deviceManagement,
+      arguments: DeviceManagementArgs(
         uid: uid,
         devices: devicesState,
         onDevicesChanged: (next) {
@@ -97,7 +98,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               iconColor: theme.colorScheme.onSurface,
               onRegisterDevice: () {
                 if (uid == null) return;
-                _showRegisterDeviceDialog(uid);
+                _openDeviceManagement(uid);
               },
             ),
             const SizedBox(height: 16),

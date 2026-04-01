@@ -4,6 +4,7 @@ import 'bar.dart';
 class DualBarChart extends StatelessWidget {
   final List<int> peak;
   final List<int> avg;
+  final List<String> labels;
   final int maxValue;
   final double height;
   final Color peakColor;
@@ -13,6 +14,7 @@ class DualBarChart extends StatelessWidget {
     super.key,
     required this.peak,
     required this.avg,
+    required this.labels,
     required this.maxValue,
     required this.height,
     required this.peakColor,
@@ -21,7 +23,6 @@ class DualBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -75,7 +76,7 @@ class DualBarChart extends StatelessWidget {
                   alignment: Alignment.bottomCenter,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
-                    children: List.generate(days.length, (index) {
+                    children: List.generate(labels.length, (index) {
                       final p = index < peak.length ? peak[index] : 0;
                       final a = index < avg.length ? avg[index] : 0;
 
@@ -103,7 +104,7 @@ class DualBarChart extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              days[index],
+                              labels[index],
                               style: TextStyle(
                                 color: textColor,
                                 fontSize: 10,

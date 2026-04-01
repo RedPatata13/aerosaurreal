@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:app_settings/app_settings.dart';
+import '../../components/wifi_password_dialog.dart';
 import 'widgets/settings_section.dart';
 import 'widgets/settings_tile.dart';
 import '../../main.dart';
+import '../../routes/routes.dart';
 import './../home/widgets/home_header.dart';
-import './../device_management/device_management.dart';
+import '../../services/api/api_client.dart';
+import '../../services/api/devices_api.dart';
+import '../../services/device/device_setup_service.dart';
+import '../device_management/device_management_args.dart';
 import 'dialogs/change_email_dialog/update_email_dialog.dart';
 import 'dialogs/change_username_dialog/update_username_dialog.dart';
 import '../../services/device/wifi_service.dart';
@@ -24,10 +29,54 @@ class _SettingsPageState extends State<SettingsPage> {
   List<Device> devicesState = [];
   int selectedDeviceIndex = 0;
 
-  void _showRegisterDeviceDialog(String uid) {
-    showDialog(
+  Future<void> _showSaveWifiPasswordDialog() async {
+    final setupService = DeviceSetupService(
+      DevicesApi(context.read<ApiClient>()),
+    );
+    final wifiName = await setupService.getSuggestedWifiName();
+    if (wifiName == null || wifiName.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Connect your phone to Wi-Fi first.'),
+        ),
+      );
+      return;
+    }
+
+    final saved = await setupService.getSavedCredentialsForCurrentWifi();
+    final result = await showDialog<WifiPasswordDialogResult>(
       context: context,
-      builder: (_) => DeviceManagementPage(
+      builder: (_) => WifiPasswordDialog(
+        title: 'Save Wi-Fi Password',
+        wifiName: wifiName,
+        actionLabel: 'Save',
+        initialPassword: saved?.password,
+      ),
+    );
+
+    if (result == null) return;
+
+    try {
+      await setupService.saveCurrentWifiPassword(result.password);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Saved Wi-Fi password for $wifiName.')),
+      );
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _openDeviceManagement(String uid) async {
+    await Navigator.of(context).pushNamed(
+      AppRoutes.deviceManagement,
+      arguments: DeviceManagementArgs(
         uid: uid,
         devices: devicesState,
         onDevicesChanged: (next) {
@@ -57,7 +106,7 @@ class _SettingsPageState extends State<SettingsPage> {
               iconColor: theme.colorScheme.onSurface,
               onRegisterDevice: () {
                 if (uid == null) return;
-                _showRegisterDeviceDialog(uid);
+                _openDeviceManagement(uid);
               },
             ),
             const SizedBox(height: 10),
@@ -196,6 +245,10 @@ class _SettingsPageState extends State<SettingsPage> {
                                   ),
                             ),
                             onTap: () {
+                              if (isConnected) {
+                                _showSaveWifiPasswordDialog();
+                                return;
+                              }
                               AppSettings.openAppSettings(
                                 type: AppSettingsType.wifi,
                               );
