@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
 class EmailUpdatedPage extends StatelessWidget {
-  const EmailUpdatedPage({super.key});
+  const EmailUpdatedPage({
+    super.key,
+    required this.pendingEmail,
+  });
+
+  final String pendingEmail;
 
   @override
   Widget build(BuildContext context) {
@@ -18,11 +23,17 @@ class EmailUpdatedPage extends StatelessWidget {
               Icon(Icons.check_circle_rounded, color: Colors.green, size: 70),
               const SizedBox(height: 25),
               Text(
-                'Email Updated Successfully!',
+                'Verify Your New Email',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'We sent a confirmation link to $pendingEmail. Open that email and finish verification before the new address will appear on your account.',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall,
               ),
               const SizedBox(height: 33),
               ElevatedButton(
@@ -40,7 +51,7 @@ class EmailUpdatedPage extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                child: const Text('Done'),
+                child: const Text('Okay'),
               ),
             ],
           ),

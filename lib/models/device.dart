@@ -31,6 +31,9 @@ extension FanSpeedX on FanSpeed {
 class Device {
   final String id;
   final String name;
+  final String? wifiName;
+  final bool? isWifiConnected;
+  final bool? isOnline;
   final bool isOn;
   final String aqiLabel;
   final int aqiValue;
@@ -60,6 +63,9 @@ class Device {
   const Device({
     required this.id,
     required this.name,
+    this.wifiName,
+    this.isWifiConnected,
+    this.isOnline,
     required this.isOn,
     required this.aqiLabel,
     required this.aqiValue,
@@ -106,6 +112,9 @@ class Device {
   Device copyWith({
     String? id,
     String? name,
+    String? wifiName,
+    bool? isWifiConnected,
+    bool? isOnline,
     bool? isOn,
     String? aqiLabel,
     int? aqiValue,
@@ -133,6 +142,9 @@ class Device {
     return Device(
       id: id ?? this.id,
       name: name ?? this.name,
+      wifiName: wifiName ?? this.wifiName,
+      isWifiConnected: isWifiConnected ?? this.isWifiConnected,
+      isOnline: isOnline ?? this.isOnline,
       isOn: isOn ?? this.isOn,
       aqiLabel: aqiLabel ?? this.aqiLabel,
       aqiValue: aqiValue ?? this.aqiValue,
@@ -165,6 +177,9 @@ class Device {
     return Device(
       id: id,
       name: name,
+      wifiName: null,
+      isWifiConnected: null,
+      isOnline: null,
       isOn: false,
       smartMode: false,
       autoAdjustFanSpeed: false,
@@ -195,7 +210,50 @@ class Device {
     final id = (json['deviceId'] ?? json['DeviceId'] ?? json['id'] ?? '')
         .toString();
     final name = (json['name'] ?? id).toString();
-    return Device.minimal(id: id, name: name);
+    final wifiName = (json['wifiName'] ??
+            json['wifiSsid'] ??
+            json['ssid'] ??
+            json['wifi'])
+        ?.toString();
+
+    bool? parseBool(dynamic value) {
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      if (value is String) {
+        final normalized = value.trim().toLowerCase();
+        if (normalized.isEmpty) return null;
+        if (normalized == 'true' ||
+            normalized == 'connected' ||
+            normalized == 'online' ||
+            normalized == 'active' ||
+            normalized == '1') {
+          return true;
+        }
+        if (normalized == 'false' ||
+            normalized == 'disconnected' ||
+            normalized == 'offline' ||
+            normalized == 'inactive' ||
+            normalized == '0') {
+          return false;
+        }
+      }
+      return null;
+    }
+
+    return Device.minimal(
+      id: id,
+      name: name,
+    ).copyWith(
+      wifiName: wifiName == null || wifiName.trim().isEmpty ? null : wifiName,
+      isWifiConnected: parseBool(
+        json['isWifiConnected'] ??
+            json['wifiConnected'] ??
+            json['connected'],
+      ),
+      isOnline: parseBool(
+        json['isOnline'] ?? json['online'] ?? json['status'],
+      ),
+    );
   }
 
   static Color ringColorForAqiCategory(String? category) {

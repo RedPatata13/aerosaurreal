@@ -12,8 +12,10 @@ import '../../services/api/devices_api.dart';
 import '../../services/device/device_setup_service.dart';
 import '../device_management/device_management_args.dart';
 import 'dialogs/change_email_dialog/update_email_dialog.dart';
+import 'dialogs/change_password_dialog/set_password_dialog.dart';
 import 'dialogs/change_username_dialog/update_username_dialog.dart';
 import '../../services/device/wifi_service.dart';
+import '../../services/auth/google_auth_service.dart';
 import '../../../models/device.dart';
 import 'package:provider/provider.dart';
 import '../../state/user_store.dart';
@@ -26,8 +28,73 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  final GoogleAuthService _googleAuthService = GoogleAuthService();
   List<Device> devicesState = [];
   int selectedDeviceIndex = 0;
+  bool _linkingGoogle = false;
+
+  Future<void> _linkGoogleAccount() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _linkingGoogle) {
+      return;
+    }
+
+    setState(() {
+      _linkingGoogle = true;
+    });
+
+    try {
+      await _googleAuthService.signOutGoogle();
+      final credential = await _googleAuthService.getGoogleCredential();
+      await user.linkWithCredential(credential);
+      await user.reload();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Google account connected successfully.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      setState(() {});
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      var message = 'Failed to connect Google account.';
+      switch (e.code) {
+        case 'provider-already-linked':
+          message = 'This Google account is already linked.';
+          break;
+        case 'credential-already-in-use':
+          message = 'That Google account is already used by another user.';
+          break;
+        case 'email-already-in-use':
+          message = 'That Google email is already used by another account.';
+          break;
+        case 'requires-recent-login':
+          message = 'Please log in again before connecting Google.';
+          break;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to connect Google account: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _linkingGoogle = false;
+        });
+      }
+    }
+  }
 
   Future<void> _showSaveWifiPasswordDialog() async {
     final setupService = DeviceSetupService(
@@ -151,8 +218,10 @@ class _SettingsPageState extends State<SettingsPage> {
                                           context: context,
                                           barrierDismissible: false,
                                           builder: (_) =>
-                                              const UpdateEmailDialog(),
+                                              UpdateEmailDialog(user: user!),
                                         );
+                                        if (!mounted) return;
+                                        setState(() {});
                                       }
                                     : null,
                               ),
@@ -188,6 +257,31 @@ class _SettingsPageState extends State<SettingsPage> {
                                     );
                                     return;
                                   }
+
+                                  if (!hasPassword) {
+                                    final result = await showDialog<bool>(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (_) =>
+                                          SetPasswordDialog(user: user!),
+                                    );
+
+                                    if (!mounted) return;
+
+                                    if (result == true) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Password added to this account successfully.',
+                                          ),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                      setState(() {});
+                                    }
+                                    return;
+                                  }
+
                                   try {
                                     await FirebaseAuth.instance
                                         .sendPasswordResetEmail(email: email);
@@ -312,7 +406,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                 : 'No account connected',
                             trailing: Chip(
                               label: Text(
-                                hasGoogleProvider
+                                _linkingGoogle
+                                    ? 'Connecting...'
+                                    : hasGoogleProvider
                                     ? 'Connected'
                                     : 'Not connected',
                                 style: theme.textTheme.labelSmall?.copyWith(
@@ -329,6 +425,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               materialTapTargetSize:
                                   MaterialTapTargetSize.shrinkWrap,
                             ),
+                            onTap: hasGoogleProvider ? null : _linkGoogleAccount,
                           );
                         },
                       ),

@@ -72,7 +72,20 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Scan a QR"), centerTitle: true),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          iconSize: 20,
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(
+          "Scan a QR",
+          style: (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        centerTitle: true,
+      ),
       body: Column(
         children: [
           Expanded(

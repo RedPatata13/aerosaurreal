@@ -1,90 +1,118 @@
 import 'package:flutter/material.dart';
-
-enum NotificationType { warning, alert, info, smartMode, energy }
+import '../../../models/app_notification.dart';
 
 class NotificationCard extends StatelessWidget {
-  final String title;
-  final String message;
-  final String time;
-  final IconData icon;
-  final bool isRead;
-  final NotificationType type;
+  final AppNotification item;
+  final VoidCallback? onTap;
 
-  const NotificationCard({
-    super.key,
-    required this.title,
-    required this.message,
-    required this.time,
-    required this.icon,
-    required this.isRead,
-    required this.type,
-  });
-
-  Color getIconColor(BuildContext context) {
-    switch (type) {
-      case NotificationType.warning:
-        return Colors.amber;
-      case NotificationType.alert:
-        return Colors.red;
-      case NotificationType.info:
-        return Colors.blue;
-      case NotificationType.smartMode:
-        return Colors.green;
-      case NotificationType.energy:
-        return Colors.orange;
-      default:
-        return Theme.of(context).colorScheme.primary;
-    }
-  }
+  const NotificationCard({super.key, required this.item, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final palette = _paletteFor(item.visualType);
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isRead
-            ? Colors.transparent
-            : theme.colorScheme.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(14),
-        border: isRead ? Border.all(color: theme.dividerColor) : null,
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: getIconColor(context).withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: getIconColor(context), size: 22),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: item.isRead
+                ? const Color(0xFF101217)
+                : const Color(0xFF151922),
+            borderRadius: BorderRadius.circular(16),
+            border: item.isRead
+                ? Border.all(color: const Color(0xFF333942), width: 1.1)
+                : null,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: palette.background,
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                const SizedBox(height: 4),
-                Text(message, style: theme.textTheme.bodySmall),
-                const SizedBox(height: 6),
-                Text(
-                  time,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: Colors.grey,
-                  ),
+                child: Icon(item.icon, color: palette.foreground, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.body,
+                      style: const TextStyle(
+                        color: Color(0xFFD7DCE3),
+                        fontSize: 14,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _timeAgo(item.createdAt),
+                      style: const TextStyle(
+                        color: Color(0xFF9AA2AC),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
+}
+
+class _NotificationPalette {
+  final Color background;
+  final Color foreground;
+
+  const _NotificationPalette(this.background, this.foreground);
+}
+
+_NotificationPalette _paletteFor(AppNotificationVisualType type) {
+  switch (type) {
+    case AppNotificationVisualType.warning:
+      return const _NotificationPalette(Color(0xFF524617), Color(0xFFFFD028));
+    case AppNotificationVisualType.critical:
+      return const _NotificationPalette(Color(0xFF4B1E23), Color(0xFFFF5B67));
+    case AppNotificationVisualType.system:
+      return const _NotificationPalette(Color(0xFF1C4A2B), Color(0xFF53D66B));
+    case AppNotificationVisualType.energy:
+      return const _NotificationPalette(Color(0xFF5B411A), Color(0xFFFFA321));
+    case AppNotificationVisualType.info:
+      return const _NotificationPalette(Color(0xFF153B5C), Color(0xFF3DA4FF));
+  }
+}
+
+String _timeAgo(DateTime? dateTime) {
+  if (dateTime == null) return 'Just now';
+
+  final diff = DateTime.now().difference(dateTime.toLocal());
+
+  if (diff.inMinutes < 1) return 'Just now';
+  if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+  if (diff.inDays < 1) return '${diff.inHours}h ago';
+  if (diff.inDays < 7) return '${diff.inDays}d ago';
+
+  final weeks = (diff.inDays / 7).floor();
+  return '${weeks}w ago';
 }

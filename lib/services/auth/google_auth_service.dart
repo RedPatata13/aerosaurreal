@@ -4,7 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 class GoogleAuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
-  Future<UserCredential> signInWithGoogle() async {
+  Future<GoogleSignInAccount> _authenticateGoogleAccount() async {
     await _googleSignIn.initialize();
 
     final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate();
@@ -12,13 +12,22 @@ class GoogleAuthService {
       throw Exception('Google sign-in cancelled');
     }
 
+    return googleUser;
+  }
+
+  Future<AuthCredential> getGoogleCredential() async {
+    final googleUser = await _authenticateGoogleAccount();
     final googleAuth = await googleUser.authentication;
     final idToken = googleAuth.idToken;
     if (idToken == null || idToken.isEmpty) {
       throw Exception('Missing Google idToken');
     }
 
-    final credential = GoogleAuthProvider.credential(idToken: idToken);
+    return GoogleAuthProvider.credential(idToken: idToken);
+  }
+
+  Future<UserCredential> signInWithGoogle() async {
+    final credential = await getGoogleCredential();
 
     return FirebaseAuth.instance.signInWithCredential(credential);
   }

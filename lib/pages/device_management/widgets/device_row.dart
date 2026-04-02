@@ -3,23 +3,25 @@ import 'package:flutter/material.dart';
 class DeviceRow extends StatelessWidget {
   final String title;
   final String subtitle;
-  final VoidCallback? onDelete;
   final VoidCallback? onTap;
-  final Color danger;
+  final VoidCallback? onTrailingPressed;
   final Color borderColor;
   final Color titleColor;
   final Color subtitleColor;
+  final IconData trailingIcon;
+  final Color? trailingColor;
 
   const DeviceRow({
     super.key,
     required this.title,
     required this.subtitle,
-    required this.onDelete,
-    required this.danger,
     required this.borderColor,
     required this.titleColor,
     required this.subtitleColor,
     this.onTap,
+    this.onTrailingPressed,
+    this.trailingIcon = Icons.more_vert,
+    this.trailingColor,
   });
 
   @override
@@ -65,8 +67,12 @@ class DeviceRow extends StatelessWidget {
               width: 36,
               height: 36,
               child: IconButton(
-                onPressed: onDelete,
-                icon: Icon(Icons.delete, color: danger, size: 20),
+                onPressed: onTrailingPressed ?? onTap,
+                icon: Icon(
+                  trailingIcon,
+                  color: trailingColor ?? titleColor,
+                  size: 20,
+                ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints.tightFor(
                   width: 36,
