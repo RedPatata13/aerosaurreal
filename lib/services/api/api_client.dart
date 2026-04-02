@@ -81,8 +81,28 @@ class ApiClient {
     );
   }
 
-  Future<http.Response> delete(String path, {bool auth = true}) async {
-    return _http.delete(_uri(path), headers: await _headers(auth: auth));
+  Future<http.Response> patch(
+    String path, {
+    Map<String, dynamic>? body,
+    bool auth = true,
+  }) async {
+    return _http.patch(
+      _uri(path),
+      headers: await _headers(auth: auth),
+      body: jsonEncode(body ?? <String, dynamic>{}),
+    );
+  }
+
+  Future<http.Response> delete(
+    String path, {
+    Map<String, dynamic>? body,
+    bool auth = true,
+  }) async {
+    return _http.delete(
+      _uri(path),
+      headers: await _headers(auth: auth),
+      body: body == null ? null : jsonEncode(body),
+    );
   }
 
   Future<Map<String, dynamic>> getJson(String path, {bool auth = true}) async {
@@ -125,11 +145,26 @@ class ApiClient {
     return _decodeJsonBody(res.body);
   }
 
-  Future<Map<String, dynamic>> deleteJson(
+  Future<Map<String, dynamic>> patchJson(
     String path, {
+    required Map<String, dynamic> body,
     bool auth = true,
   }) async {
-    final res = await delete(path, auth: auth);
+    final res = await patch(path, body: body, auth: auth);
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('Request failed: ${res.statusCode} ${res.body}');
+    }
+
+    return _decodeJsonBody(res.body);
+  }
+
+  Future<Map<String, dynamic>> deleteJson(
+    String path, {
+    Map<String, dynamic>? body,
+    bool auth = true,
+  }) async {
+    final res = await delete(path, body: body, auth: auth);
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('Request failed: ${res.statusCode} ${res.body}');

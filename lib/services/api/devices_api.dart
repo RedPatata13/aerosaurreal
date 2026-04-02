@@ -40,4 +40,24 @@ class DevicesApi {
   Future<void> unregisterDevice(String deviceId) async {
     await _api.deleteJson('/devices/$deviceId');
   }
+
+  Future<Map<String, dynamic>> updateDeviceName({
+    required String deviceId,
+    required String name,
+  }) async {
+    final res = await _api.putJson(
+      '/devices/$deviceId',
+      body: {'name': name.trim()},
+    );
+
+    final device = res['device'];
+    if (device is Map) {
+      return device.cast<String, dynamic>();
+    }
+
+    return {
+      'deviceId': deviceId,
+      'name': name.trim(),
+    };
+  }
 }

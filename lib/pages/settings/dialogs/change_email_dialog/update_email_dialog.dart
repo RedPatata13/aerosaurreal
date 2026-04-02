@@ -1,8 +1,18 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import '../../../../firebase_options.dart';
 import 'email_updated_page.dart';
 
 class UpdateEmailDialog extends StatefulWidget {
-  const UpdateEmailDialog({super.key});
+  const UpdateEmailDialog({
+    super.key,
+    required this.user,
+  });
+
+  final User user;
 
   @override
   State<UpdateEmailDialog> createState() => _UpdateEmailDialogState();
@@ -10,6 +20,7 @@ class UpdateEmailDialog extends StatefulWidget {
 
 class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
   final _emailController = TextEditingController();
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -23,14 +34,108 @@ class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
 
   bool get _isButtonEnabled => _emailController.text.trim().isNotEmpty;
 
-  void _update() {
-    if (!_isButtonEnabled) return;
-
-    Navigator.pop(context);
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const EmailUpdatedPage()),
+  Future<bool> _emailAlreadyExists(String email) async {
+    final uri = Uri.parse(
+      'https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=${DefaultFirebaseOptions.currentPlatform.apiKey}',
     );
+
+    final response = await http.post(
+      uri,
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'identifier': email,
+        'continueUri': 'http://localhost',
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Email validation failed (${response.statusCode}).');
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return data['registered'] == true;
+  }
+
+  Future<void> _update() async {
+    if (!_isButtonEnabled || _isSubmitting) return;
+
+    final email = _emailController.text.trim();
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      if (widget.user.email == email) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('That email is already set on your account.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      final emailExists = await _emailAlreadyExists(email);
+      final currentEmail = widget.user.email?.trim().toLowerCase();
+      final normalizedEmail = email.toLowerCase();
+
+      if (emailExists && currentEmail != normalizedEmail) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('That email is already in use.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      await widget.user.verifyBeforeUpdateEmail(email);
+      await widget.user.reload();
+
+      if (!mounted) return;
+      navigator.pop();
+      navigator.push(
+        MaterialPageRoute(
+          builder: (_) => EmailUpdatedPage(pendingEmail: email),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      var message = 'Failed to update email.';
+      switch (e.code) {
+        case 'invalid-email':
+          message = 'Please enter a valid email address.';
+          break;
+        case 'email-already-in-use':
+          message = 'That email is already in use.';
+          break;
+        case 'requires-recent-login':
+          message =
+              'Please log in again before changing your email address.';
+          break;
+      }
+
+      messenger.showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Failed to update email: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   @override
@@ -121,7 +226,9 @@ class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
                     width: 100,
                     height: 44,
                     child: ElevatedButton(
-                      onPressed: _isButtonEnabled ? _update : null,
+                      onPressed: _isButtonEnabled && !_isSubmitting
+                          ? _update
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isButtonEnabled
                             ? (isDark
@@ -139,7 +246,16 @@ class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text('Update', textAlign: TextAlign.center),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text(
+                              'Update',
+                              textAlign: TextAlign.center,
+                            ),
                     ),
                   ),
                 ],

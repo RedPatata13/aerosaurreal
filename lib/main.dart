@@ -16,6 +16,8 @@ import 'pages/device_management/device_management_args.dart';
 import 'pages/location_gate.dart';
 import 'package:provider/provider.dart';
 import 'services/api/api_client.dart';
+import 'services/api/notifications_api.dart';
+import 'services/notifications/push_notification_service.dart';
 import 'state/user_store.dart';
 import 'package:aerosaur_2nd_sem/services/repositories/user_repository.dart';
 
@@ -30,20 +32,25 @@ void main() async {
     throw Exception('Missing API_BASE_URL in .env');
   }
 
+  final apiClient = ApiClient(baseUrl: apiBaseUrl);
+  final notificationsApi = NotificationsApi(apiClient);
+  final pushNotificationService = PushNotificationService(notificationsApi);
+  await pushNotificationService.initialize();
+
   runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
-  static _MyAppState of(BuildContext context) =>
-      context.findAncestorStateOfType<_MyAppState>()!;
+  static MyAppState of(BuildContext context) =>
+      context.findAncestorStateOfType<MyAppState>()!;
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<MyApp> createState() => MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.system;
 
   void setThemeMode(ThemeMode mode) {
@@ -58,6 +65,13 @@ class _MyAppState extends State<MyApp> {
       providers: [
         Provider<ApiClient>(
           create: (_) => ApiClient(baseUrl: dotenv.env['API_BASE_URL']!),
+        ),
+        Provider<NotificationsApi>(
+          create: (context) => NotificationsApi(context.read<ApiClient>()),
+        ),
+        Provider<PushNotificationService>(
+          create: (context) =>
+              PushNotificationService(context.read<NotificationsApi>()),
         ),
         Provider<UserRepository>(
           create: (context) => UserRepository(context.read<ApiClient>()),

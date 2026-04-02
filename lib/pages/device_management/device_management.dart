@@ -9,8 +9,8 @@ import '../../services/api/api_client.dart';
 import '../../services/api/devices_api.dart';
 import '../../services/device/device_setup_service.dart';
 import '../home/widgets/home_header.dart';
+import 'device_details_page.dart';
 import 'widgets/device_row.dart';
-import 'widgets/dialog_button.dart';
 import 'widgets/filled_input.dart';
 
 class DeviceManagementPage extends StatefulWidget {
@@ -225,84 +225,15 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     }
   }
 
-  Future<void> _unregisterDevice(String deviceId) async {
-    try {
-      await _devicesApi.unregisterDevice(deviceId);
-      await _loadDevices(silent: _devices.isNotEmpty);
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Device unregistered.')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to unregister: $e')));
-    }
-  }
-
-  Future<void> _confirmDelete(String deviceId) async {
-    final theme = Theme.of(context);
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Container(
-            width: 340,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.dividerColor),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Are you sure you want to\nremove this device?',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DialogButton(
-                        label: 'Back',
-                        onPressed: () => Navigator.of(context).pop(false),
-                        primary: false,
-                        borderColor: theme.dividerColor,
-                        foreground: theme.colorScheme.onSurface,
-                        background: null,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: DialogButton(
-                        label: 'Confirm',
-                        onPressed: () => Navigator.of(context).pop(true),
-                        primary: true,
-                        borderColor: theme.dividerColor,
-                        foreground: Colors.white,
-                        background: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
+  Future<void> _openDeviceDetails(Device device) async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => DeviceDetailsPage(device: device),
       ),
     );
 
-    if (shouldDelete == true) {
-      await _unregisterDevice(deviceId);
+    if (mounted) {
+      await _loadDevices(silent: true);
     }
   }
 
@@ -492,9 +423,10 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                             DeviceRow(
                               title: device.name,
                               subtitle: 'ID: ${device.id}',
-                              onDelete: () => _confirmDelete(device.id),
-                              onTap: () => _provisionAfterRegistration(device.id),
-                              danger: Colors.red,
+                              onTap: () => _openDeviceDetails(device),
+                              onTrailingPressed: () =>
+                                  _openDeviceDetails(device),
+                              trailingIcon: Icons.more_vert,
                               borderColor: theme.dividerColor,
                               titleColor: theme.colorScheme.onSurface,
                               subtitleColor:
