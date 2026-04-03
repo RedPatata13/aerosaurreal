@@ -5,6 +5,11 @@ class Endpoints {
   static const notificationSettings = '/notifications/settings';
   static const notificationMarkAllRead = '/notifications/mark-all-read';
   static const notificationClearAll = '/notifications/clear-all';
+  static const billingSubscription = '/billing/subscription';
+  static const paymayaCheckout = '/paymaya/checkout';
+  static String paymayaPremium(String userId) => '/paymaya/premium/$userId';
+  static String billingSubscriptionStatus(String userId) =>
+      '/billing/subscription/$userId';
   static String notificationMarkRead(String notificationId) =>
       '/notifications/$notificationId/read';
   static String control(String deviceId) => '/devices/$deviceId/control';
