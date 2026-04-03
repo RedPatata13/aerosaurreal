@@ -18,7 +18,7 @@ class SubscriptionPage extends StatefulWidget {
 }
 
 class _SubscriptionPageState extends State<SubscriptionPage> {
-  static const _planPrice = 'PHP 149.99';
+  static const _planPrice = '₱149.99';
   static const _planSubtitle = 'Billed every 3 months';
 
   static const _features = [
@@ -302,51 +302,75 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
                       ),
                       child: Column(
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Every 3 Months',
-                                      style: theme.textTheme.titleMedium
-                                          ?.copyWith(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w800,
-                                            color: colorScheme.onSurface,
-                                          ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _planSubtitle,
-                                      style: theme.textTheme.bodySmall
-                                          ?.copyWith(
-                                            fontSize: 14,
-                                            color: colorScheme.onSurface
-                                                .withValues(alpha: 0.6),
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 20),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final useCompactLayout =
+                                  constraints.maxWidth < 285;
+
+                              return Flex(
+                                direction: useCompactLayout
+                                    ? Axis.vertical
+                                    : Axis.horizontal,
+                                crossAxisAlignment: useCompactLayout
+                                    ? CrossAxisAlignment.start
+                                    : CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    _planPrice,
-                                    style: theme.textTheme.headlineSmall
-                                        ?.copyWith(
-                                          fontSize: 30,
-                                          fontWeight: FontWeight.w900,
-                                          color: colorScheme.onSurface,
+                                  Expanded(
+                                    flex: useCompactLayout ? 0 : 3,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Every 3 Months',
+                                          style: theme.textTheme.titleMedium
+                                              ?.copyWith(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w800,
+                                                color: colorScheme.onSurface,
+                                              ),
                                         ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _planSubtitle,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                fontSize: 14,
+                                                color: colorScheme.onSurface
+                                                    .withValues(alpha: 0.6),
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    width: useCompactLayout ? 0 : 20,
+                                    height: useCompactLayout ? 16 : 0,
+                                  ),
+                                  Align(
+                                    alignment: useCompactLayout
+                                        ? Alignment.centerLeft
+                                        : Alignment.topRight,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: useCompactLayout
+                                          ? Alignment.centerLeft
+                                          : Alignment.centerRight,
+                                      child: Text(
+                                        _planPrice,
+                                        maxLines: 1,
+                                        style: theme.textTheme.headlineSmall
+                                            ?.copyWith(
+                                              fontSize: 30,
+                                              fontWeight: FontWeight.w900,
+                                              color: colorScheme.onSurface,
+                                            ),
+                                      ),
+                                    ),
                                   ),
                                 ],
-                              ),
-                            ],
+                              );
+                            },
                           ),
                           const SizedBox(height: 24),
                           _PaymentOptionTile(
