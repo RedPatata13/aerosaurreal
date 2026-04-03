@@ -8,6 +8,7 @@ import 'pages/signin/signin.dart';
 import 'pages/home/home.dart';
 import 'pages/settings/settings.dart';
 import 'pages/device_management/device_management.dart';
+import 'pages/subscription/subscription.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'theme/app_theme.dart';
 import 'routes/routes.dart';
@@ -93,6 +94,7 @@ class MyAppState extends State<MyApp> {
           AppRoutes.entryGate: (_) => const EntryGate(),
           AppRoutes.signup: (_) => const SignUpPage(),
           AppRoutes.login: (_) => const LoginPage(),
+          AppRoutes.premium: (_) => const SubscriptionPage(),
           AppRoutes.home: (_) => const LocationGate(child: HomePage()),
           AppRoutes.settings: (_) => const SettingsPage(),
           AppRoutes.notifications: (_) => const NotificationsPage(),

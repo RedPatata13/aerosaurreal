@@ -16,6 +16,7 @@ import 'dialogs/change_password_dialog/set_password_dialog.dart';
 import 'dialogs/change_username_dialog/update_username_dialog.dart';
 import '../../services/device/wifi_service.dart';
 import '../../services/auth/google_auth_service.dart';
+import '../../services/repositories/premium_repository.dart';
 import '../../../models/device.dart';
 import 'package:provider/provider.dart';
 import '../../state/user_store.dart';
@@ -32,6 +33,69 @@ class _SettingsPageState extends State<SettingsPage> {
   List<Device> devicesState = [];
   int selectedDeviceIndex = 0;
   bool _linkingGoogle = false;
+  Future<Map<String, dynamic>>? _premiumStatusFuture;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    _premiumStatusFuture ??= _loadPremiumStatus(uid);
+  }
+
+  Future<Map<String, dynamic>> _loadPremiumStatus(String uid) {
+    return PremiumRepository(context.read<ApiClient>()).getPremiumStatus(uid);
+  }
+
+  Future<void> _openPremiumPage() async {
+    await Navigator.of(context).pushNamed(AppRoutes.premium);
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (!mounted || uid == null) return;
+
+    setState(() {
+      _premiumStatusFuture = _loadPremiumStatus(uid);
+    });
+  }
+
+  String _formatPlanName(String? planId) {
+    if (planId == null || planId.isEmpty) return 'No active plan';
+
+    switch (planId) {
+      case 'PREMIUM_QUARTERLY':
+        return 'Premium Quarterly';
+      default:
+        return planId.replaceAll('_', ' ');
+    }
+  }
+
+  String _formatExpiry(String? raw) {
+    if (raw == null || raw.isEmpty) return 'No renewal date yet';
+
+    try {
+      final date = DateTime.parse(raw).toLocal();
+      const months = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ];
+
+      return '${months[date.month - 1]} ${date.day}, ${date.year}';
+    } catch (_) {
+      return raw;
+    }
+  }
 
   Future<void> _linkGoogleAccount() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -104,9 +168,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (wifiName == null || wifiName.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Connect your phone to Wi-Fi first.'),
-        ),
+        const SnackBar(content: Text('Connect your phone to Wi-Fi first.')),
       );
       return;
     }
@@ -269,7 +331,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                     if (!mounted) return;
 
                                     if (result == true) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
                                           content: Text(
                                             'Password added to this account successfully.',
@@ -311,6 +375,97 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 10),
+
+                  /// Subscription
+                  SettingsSection(
+                    title: 'Subscription',
+                    children: [
+                      FutureBuilder<Map<String, dynamic>>(
+                        future: _premiumStatusFuture,
+                        builder: (context, snapshot) {
+                          final data = snapshot.data;
+                          final isPremium = data?['isPremium'] == true;
+                          final planName = _formatPlanName(
+                            data?['premiumPlan']?.toString(),
+                          );
+                          final expiryLabel = _formatExpiry(
+                            data?['expiresAt']?.toString(),
+                          );
+                          final statusText =
+                              snapshot.connectionState ==
+                                  ConnectionState.waiting
+                              ? 'Checking...'
+                              : isPremium
+                              ? 'Subscribed'
+                              : 'Free';
+                          final statusColor =
+                              snapshot.connectionState ==
+                                  ConnectionState.waiting
+                              ? Colors.grey
+                              : isPremium
+                              ? Colors.green
+                              : theme.colorScheme.primary;
+
+                          return Column(
+                            children: [
+                              SettingsTile(
+                                icon: const Icon(
+                                  Icons.workspace_premium_outlined,
+                                ),
+                                title: 'Plan',
+                                subtitle:
+                                    snapshot.connectionState ==
+                                        ConnectionState.waiting
+                                    ? 'Checking your subscription...'
+                                    : isPremium
+                                    ? planName
+                                    : 'Free Plan',
+                                trailing: Chip(
+                                  label: Text(
+                                    statusText,
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  backgroundColor: statusColor,
+                                  side: BorderSide.none,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                              SettingsTile(
+                                icon: const Icon(Icons.event_outlined),
+                                title: isPremium
+                                    ? 'Renews On'
+                                    : 'Subscription End',
+                                subtitle: expiryLabel,
+                              ),
+                              SettingsTile(
+                                icon: const Icon(
+                                  Icons.arrow_circle_up_outlined,
+                                ),
+                                title: isPremium
+                                    ? 'Manage Subscription'
+                                    : 'Upgrade to Premium',
+                                subtitle: isPremium
+                                    ? 'View your premium page and current access details.'
+                                    : 'Unlock all access',
+                                trailing: const Icon(Icons.chevron_right),
+                                onTap: _openPremiumPage,
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+
                   const SizedBox(height: 10),
 
                   /// Connectivity
@@ -425,7 +580,9 @@ class _SettingsPageState extends State<SettingsPage> {
                               materialTapTargetSize:
                                   MaterialTapTargetSize.shrinkWrap,
                             ),
-                            onTap: hasGoogleProvider ? null : _linkGoogleAccount,
+                            onTap: hasGoogleProvider
+                                ? null
+                                : _linkGoogleAccount,
                           );
                         },
                       ),

@@ -6,6 +6,7 @@ import '../../services/auth/google_auth_service.dart';
 import '../../utils/snackbar_utils.dart';
 import '../../utils/token_utils.dart';
 import 'package:aerosaur_2nd_sem/state/user_store.dart';
+import '../../routes/routes.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -107,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _navigateToApp() {
-    Navigator.pushReplacementNamed(context, '/app');
+    Navigator.pushReplacementNamed(context, AppRoutes.premium);
   }
 
   @override

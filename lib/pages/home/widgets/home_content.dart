@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:aerosaur_2nd_sem/state/device_hub_controller.dart';
 import 'package:aerosaur_2nd_sem/state/user_store.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -16,6 +18,7 @@ import '../../../services/api/api_client.dart';
 import '../../../services/api/control_api.dart';
 import '../../../services/api/devices_api.dart';
 import '../../../services/api/readings_api.dart';
+import '../../../services/repositories/premium_repository.dart';
 import 'home_header.dart';
 import 'no_device_content.dart';
 import '../dialogs/register_device_dialog.dart';
@@ -30,6 +33,8 @@ class HomeContent extends StatefulWidget {
 class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
   late final PageController _pageController;
   late final DeviceHubController _controller;
+  bool _premiumLoading = true;
+  bool _isPremium = false;
 
   @override
   void initState() {
@@ -57,8 +62,33 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await context.read<UserStore>().loadOrCreate();
+      await _loadPremiumStatus(currentUser.uid);
       await _controller.initialize();
     });
+  }
+
+  Future<void> _loadPremiumStatus(String userId) async {
+    try {
+      final status = await PremiumRepository(
+        context.read<ApiClient>(),
+      ).getPremiumStatus(userId);
+
+      if (!mounted) return;
+      setState(() {
+        _isPremium = status['isPremium'] == true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isPremium = false;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _premiumLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _handleLogoutAndRedirect() async {
@@ -117,6 +147,10 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
         _handleLogoutAndRedirect();
       });
       return const Scaffold(body: SizedBox.shrink());
+    }
+
+    if (_premiumLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return ListenableBuilder(
@@ -190,56 +224,79 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                   },
                 ),
                 Expanded(
-                  child: hasDevices
-                      ? PageView(
-                          controller: _pageController,
-                          physics: const BouncingScrollPhysics(),
-                          onPageChanged: (index) async {
-                            await _controller.selectPage(index);
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const BouncingScrollPhysics(),
+                    onPageChanged: (index) async {
+                      await _controller.selectPage(index);
+                    },
+                    children: [
+                      if (selectedDevice != null)
+                        Dashboard(
+                          devices: devicesForUi,
+                          selectedDeviceIndex: _controller.selectedDeviceIndex,
+                          onControlChanged: (patch) async {
+                            final error = await _controller
+                                .updateControlForSelectedDevice(patch);
+                            if (error != null && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(error)),
+                              );
+                            }
                           },
-                          children: [
-                            if (selectedDevice != null)
-                              Dashboard(
-                                devices: devicesForUi,
-                                selectedDeviceIndex:
-                                    _controller.selectedDeviceIndex,
-                                onControlChanged: (patch) async {
-                                  final error = await _controller
-                                      .updateControlForSelectedDevice(patch);
-                                  if (error != null && context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text(error)),
-                                    );
-                                  }
-                                },
-                                onSelectDevice: (index) async {
-                                  await _controller.selectDevice(index);
-                                },
-                                onUpdateDevice: _controller.updateDevice,
-                                onRefresh: _controller.refreshCurrentTab,
-                              )
-                            else
-                              const SizedBox.shrink(),
-                            if (selectedDevice != null)
-                              Monitoring(
-                                device: selectedDevice,
-                                onRefresh: _controller.refreshCurrentTab,
-                              )
-                            else
-                              const SizedBox.shrink(),
-                            if (selectedDevice != null)
-                              Insights(
-                                device: selectedDevice,
-                                onRefresh: _controller.refreshCurrentTab,
-                              )
-                            else
-                              const SizedBox.shrink(),
-                          ],
+                          onSelectDevice: (index) async {
+                            await _controller.selectDevice(index);
+                          },
+                          onUpdateDevice: _controller.updateDevice,
+                          onRefresh: _controller.refreshCurrentTab,
                         )
-                      : NoDeviceContent(
+                      else
+                        NoDeviceContent(
                           onRegisterDevice: _showRegisterDeviceDialog,
                           onLogout: _handleLogoutAndRedirect,
                         ),
+                      _PremiumLockedPage(
+                        locked: !_isPremium,
+                        title: 'Premium Required',
+                        message:
+                            'Monitoring is available for premium subscribers only.',
+                        onUnlock: () {
+                          Navigator.of(context).pushNamed(AppRoutes.premium);
+                        },
+                        child: selectedDevice != null
+                            ? Monitoring(
+                                device: selectedDevice,
+                                onRefresh: _controller.refreshCurrentTab,
+                              )
+                            : _NoDeviceFeatureContent(
+                                title: 'No device registered yet.',
+                                description:
+                                    'Register a device to start viewing live monitoring data.',
+                                onRegisterDevice: _showRegisterDeviceDialog,
+                              ),
+                      ),
+                      _PremiumLockedPage(
+                        locked: !_isPremium,
+                        title: 'Premium Required',
+                        message:
+                            'Insights is available for premium subscribers only.',
+                        onUnlock: () {
+                          Navigator.of(context).pushNamed(AppRoutes.premium);
+                        },
+                        child: selectedDevice != null
+                            ? Insights(
+                                device: selectedDevice,
+                                onRefresh: _controller.refreshCurrentTab,
+                              )
+                            : _NoDeviceFeatureContent(
+                                title: 'No device registered yet.',
+                                description:
+                                    'Register a device to unlock air quality insights and trends.',
+                                onRegisterDevice: _showRegisterDeviceDialog,
+                              ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -258,6 +315,166 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
           ),
         );
       },
+    );
+  }
+}
+
+class _PremiumLockedPage extends StatelessWidget {
+  const _PremiumLockedPage({
+    required this.locked,
+    required this.title,
+    required this.message,
+    required this.onUnlock,
+    required this.child,
+  });
+
+  final bool locked;
+  final String title;
+  final String message;
+  final VoidCallback onUnlock;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!locked) {
+      return child;
+    }
+
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        IgnorePointer(
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+            child: child,
+          ),
+        ),
+        Container(color: theme.scaffoldBackgroundColor.withValues(alpha: 0.45)),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: Material(
+                color: colorScheme.surface,
+                elevation: 8,
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
+                  onTap: onUnlock,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.lock_rounded,
+                          size: 34,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          title,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          message,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurface.withValues(alpha: 0.72),
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: onUnlock,
+                            child: const Text('Get Premium'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NoDeviceFeatureContent extends StatelessWidget {
+  const _NoDeviceFeatureContent({
+    required this.title,
+    required this.description,
+    required this.onRegisterDevice,
+  });
+
+  final String title;
+  final String description;
+  final VoidCallback onRegisterDevice;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(22, 28, 22, 22),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: theme.dividerColor),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.devices_other_rounded,
+                size: 34,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                description,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 18),
+              ElevatedButton.icon(
+                onPressed: onRegisterDevice,
+                icon: const Icon(Icons.link_rounded),
+                label: const Text('Register Device'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
