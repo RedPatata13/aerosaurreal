@@ -13,7 +13,9 @@ class Dashboard extends StatelessWidget {
   final ValueChanged<int> onSelectDevice;
   final ValueChanged<Device> onUpdateDevice;
   final Future<void> Function() onRefresh;
-  final Future<void> Function(Map<String, dynamic> patch) onControlChanged;
+  final Future<void> Function(String deviceId, bool isOn) onTogglePower;
+  final Future<void> Function(String deviceId, Map<String, dynamic> patch)
+  onControlChanged;
 
   const Dashboard({
     super.key,
@@ -22,6 +24,7 @@ class Dashboard extends StatelessWidget {
     required this.onSelectDevice,
     required this.onUpdateDevice,
     required this.onRefresh,
+    required this.onTogglePower,
     required this.onControlChanged,
   });
 
@@ -31,6 +34,7 @@ class Dashboard extends StatelessWidget {
 
     final selectedDevice =
         devices[selectedDeviceIndex.clamp(0, devices.length - 1)];
+    final isSelectedDeviceOn = selectedDevice.isOn;
     final theme = Theme.of(context);
 
     return RefreshIndicator(
@@ -94,8 +98,7 @@ class Dashboard extends StatelessWidget {
                     selected: index == selectedDeviceIndex,
                     color: theme.colorScheme.primary,
                     onSelect: () => onSelectDevice(index),
-                    onTogglePower: () =>
-                        onControlChanged({"power": !device.isOn}),
+                    onTogglePower: () => onTogglePower(device.id, !device.isOn),
                   );
                 },
               ),
@@ -115,11 +118,17 @@ class Dashboard extends StatelessWidget {
                     labelStyle:
                         (theme.textTheme.bodyMedium ?? const TextStyle())
                             .copyWith(
-                              color: theme.colorScheme.onSurface,
+                              color: theme.colorScheme.onSurface.withOpacity(
+                                isSelectedDeviceOn ? 1 : 0.55,
+                              ),
                               fontWeight: FontWeight.w600,
                             ),
-                    onChanged: (value) =>
-                        onControlChanged({"smartMode": value}),
+                    onChanged: isSelectedDeviceOn
+                        ? (value) => onControlChanged(
+                            selectedDevice.id,
+                            {"smartMode": value},
+                          )
+                        : null,
                   ),
                   Divider(color: theme.dividerColor),
                   if (selectedDevice.smartMode) ...[
@@ -129,11 +138,17 @@ class Dashboard extends StatelessWidget {
                       labelStyle:
                           (theme.textTheme.bodyMedium ?? const TextStyle())
                               .copyWith(
-                                color: theme.colorScheme.onSurface,
+                                color: theme.colorScheme.onSurface.withOpacity(
+                                  isSelectedDeviceOn ? 1 : 0.55,
+                                ),
                                 fontWeight: FontWeight.w600,
                               ),
-                      onChanged: (value) =>
-                          onControlChanged({"autoAdjust": value}),
+                      onChanged: isSelectedDeviceOn
+                          ? (value) => onControlChanged(
+                              selectedDevice.id,
+                              {"autoAdjust": value},
+                            )
+                          : null,
                     ),
                     Divider(color: theme.dividerColor),
                     ToggleRow(
@@ -142,11 +157,17 @@ class Dashboard extends StatelessWidget {
                       labelStyle:
                           (theme.textTheme.bodyMedium ?? const TextStyle())
                               .copyWith(
-                                color: theme.colorScheme.onSurface,
+                                color: theme.colorScheme.onSurface.withOpacity(
+                                  isSelectedDeviceOn ? 1 : 0.55,
+                                ),
                                 fontWeight: FontWeight.w600,
                               ),
-                      onChanged: (value) =>
-                          onControlChanged({"autoOff": value}),
+                      onChanged: isSelectedDeviceOn
+                          ? (value) => onControlChanged(
+                              selectedDevice.id,
+                              {"autoOff": value},
+                            )
+                          : null,
                     ),
                   ],
                 ],
@@ -162,6 +183,28 @@ class Dashboard extends StatelessWidget {
                   .copyWith(fontWeight: FontWeight.w700),
             ),
 
+            if (!isSelectedDeviceOn) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Turn the device on to change smart mode and fan speed.',
+                style: (theme.textTheme.bodySmall ?? const TextStyle())
+                    .copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+            ] else if (selectedDevice.smartMode) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Smart mode is active. The highlighted button shows the current fan speed.',
+                style: (theme.textTheme.bodySmall ?? const TextStyle())
+                    .copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+            ],
+
             const SizedBox(height: 10),
 
             SectionCard(
@@ -169,8 +212,12 @@ class Dashboard extends StatelessWidget {
               borderColor: theme.dividerColor,
               child: FanSpeedSelector(
                 value: selectedDevice.fanSpeed,
-                onChanged: (value) =>
-                    onControlChanged({"fanSpeed": value.toApi()}),
+                onChanged: isSelectedDeviceOn
+                    ? (value) => onControlChanged(
+                        selectedDevice.id,
+                        {"fanSpeed": value.toApi()},
+                      )
+                    : null,
                 surfaceColor: theme.colorScheme.surface,
                 borderColor: theme.dividerColor,
                 activeColor: theme.colorScheme.primary,

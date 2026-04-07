@@ -91,17 +91,41 @@ class Device {
     required this.energySavedPercent,
   });
 
+  static bool? parseControlBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized.isEmpty) return null;
+      if (normalized == 'true' ||
+          normalized == 'on' ||
+          normalized == 'enabled' ||
+          normalized == 'active' ||
+          normalized == '1') {
+        return true;
+      }
+      if (normalized == 'false' ||
+          normalized == 'off' ||
+          normalized == 'disabled' ||
+          normalized == 'inactive' ||
+          normalized == '0') {
+        return false;
+      }
+    }
+    return null;
+  }
+
   Device copyWithFromPatch(Map<String, dynamic> patch) {
     return copyWith(
-      isOn: patch.containsKey("power") ? patch["power"] as bool : null,
+      isOn: patch.containsKey("power") ? parseControlBool(patch["power"]) : null,
       smartMode: patch.containsKey("smartMode")
-          ? patch["smartMode"] as bool
+          ? parseControlBool(patch["smartMode"])
           : null,
       autoAdjustFanSpeed: patch.containsKey("autoAdjust")
-          ? patch["autoAdjust"] as bool
+          ? parseControlBool(patch["autoAdjust"])
           : null,
       turnOffAutomatically: patch.containsKey("autoOff")
-          ? patch["autoOff"] as bool
+          ? parseControlBool(patch["autoOff"])
           : null,
       fanSpeed: patch.containsKey("fanSpeed")
           ? FanSpeedX.fromApi(patch["fanSpeed"] as String)
@@ -217,26 +241,21 @@ class Device {
         ?.toString();
 
     bool? parseBool(dynamic value) {
-      if (value is bool) return value;
-      if (value is num) return value != 0;
+      final parsed = parseControlBool(value);
+      if (parsed != null) {
+        return parsed;
+      }
+
       if (value is String) {
         final normalized = value.trim().toLowerCase();
-        if (normalized.isEmpty) return null;
-        if (normalized == 'true' ||
-            normalized == 'connected' ||
-            normalized == 'online' ||
-            normalized == 'active' ||
-            normalized == '1') {
+        if (normalized == 'connected' || normalized == 'online') {
           return true;
         }
-        if (normalized == 'false' ||
-            normalized == 'disconnected' ||
-            normalized == 'offline' ||
-            normalized == 'inactive' ||
-            normalized == '0') {
+        if (normalized == 'disconnected' || normalized == 'offline') {
           return false;
         }
       }
+
       return null;
     }
 

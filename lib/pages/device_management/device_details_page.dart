@@ -24,7 +24,6 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
   late final ReadingsApi _readingsApi;
   late final DeviceSetupService _setupService;
   late Device _device;
-  String? _savedWifiName;
   int? _lastReadingUpdatedAtSec;
   bool _servicesInitialized = false;
   bool _savingName = false;
@@ -51,14 +50,6 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
     _refreshDeviceDetails(silent: true);
   }
 
-  Future<void> _loadSavedWifiName() async {
-    final saved = await _setupService.getSavedCredentials();
-    if (!mounted) return;
-    setState(() {
-      _savedWifiName = saved?.ssid.trim();
-    });
-  }
-
   String get _deviceNameLabel {
     final trimmed = _device.name.trim();
     if (trimmed.isEmpty || trimmed == _device.id) {
@@ -81,11 +72,6 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
     final deviceWifiName = _device.wifiName?.trim();
     if (deviceWifiName != null && deviceWifiName.isNotEmpty) {
       return deviceWifiName;
-    }
-
-    final savedWifiName = _savedWifiName?.trim();
-    if (savedWifiName != null && savedWifiName.isNotEmpty) {
-      return 'Saved Wi-Fi: $savedWifiName';
     }
 
     return 'Unknown';
@@ -126,8 +112,6 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
     }
 
     try {
-      await _loadSavedWifiName();
-
       final devices = await _devicesApi.listDevices();
       final matching = devices.cast<Map<String, dynamic>?>().firstWhere(
         (item) {
@@ -367,7 +351,7 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
           constraints: const BoxConstraints(maxWidth: 360),
           child: Container(
             width: 340,
-            height: 160,
+            height: 210,
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
             decoration: BoxDecoration(
               color: theme.cardColor,
@@ -384,7 +368,13 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 10),
+                Text(
+                  'This will remove it from your app and ask the device to clear its Wi-Fi credentials and return to offline fallback mode.',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 24),
                 Row(
                   children: [
                     Expanded(
@@ -433,7 +423,13 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Device unregistered.')));
+      ).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Device removed. The device will clear Wi-Fi credentials when it receives the removal command.',
+          ),
+        ),
+      );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
@@ -448,7 +444,9 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
   }
 
   Future<void> _manageWifi() async {
-    if (_provisioningWifi || _removing || _savingName) return;
+    if (_provisioningWifi || _removing || _savingName) {
+      return;
+    }
 
     final wifiName = await _setupService.getSuggestedWifiName();
     if (wifiName == null || wifiName.isEmpty) {
@@ -459,14 +457,12 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
       return;
     }
 
-    final saved = await _setupService.getSavedCredentialsForCurrentWifi();
     final result = await showDialog<WifiPasswordDialogResult>(
       context: context,
       builder: (_) => WifiPasswordDialog(
         title: 'Provision Wi-Fi',
         wifiName: wifiName,
         actionLabel: 'Provision',
-        initialPassword: saved?.password,
       ),
     );
 
@@ -475,10 +471,6 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
     setState(() => _provisioningWifi = true);
 
     try {
-      await _setupService.saveWifiCredentials(
-        ssid: wifiName,
-        password: result.password,
-      );
       await _setupService.provisionWifi(
         rawCode: _device.id,
         ssid: wifiName,
@@ -488,7 +480,6 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
       if (!mounted) return;
       setState(() {
         _device = _device.copyWith(wifiName: wifiName, isWifiConnected: true);
-        _savedWifiName = wifiName;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

@@ -31,7 +31,8 @@ class DeviceHubController extends ChangeNotifier {
   final Set<String> _latestLoading = <String>{};
   final Set<String> _analyticsLoading = <String>{};
   final Map<String, int?> _lastUpdatedAtSecByDevice = <String, int?>{};
-  final Map<String, DateTime> _lastAnalyticsLoadedAtByDevice = <String, DateTime>{};
+  final Map<String, DateTime> _lastAnalyticsLoadedAtByDevice =
+      <String, DateTime>{};
 
   Timer? _pollTimer;
   bool _initialized = false;
@@ -53,7 +54,9 @@ class DeviceHubController extends ChangeNotifier {
       return 0;
     }
 
-    final index = _devices.indexWhere((device) => device.id == _selectedDeviceId);
+    final index = _devices.indexWhere(
+      (device) => device.id == _selectedDeviceId,
+    );
     return index >= 0 ? index : 0;
   }
 
@@ -237,7 +240,8 @@ class DeviceHubController extends ChangeNotifier {
 
     try {
       final data = await _analyticsApi.getAnalytics7d(device.id);
-      final summary = (data['summary'] as Map?)?.cast<String, dynamic>() ??
+      final summary =
+          (data['summary'] as Map?)?.cast<String, dynamic>() ??
           const <String, dynamic>{};
       final trend = (data['aqiTrend'] as List?) ?? const [];
       final usage = (data['usageTrend'] as List?) ?? const [];
@@ -274,10 +278,10 @@ class DeviceHubController extends ChangeNotifier {
           dailyUsageHours: usageList.isNotEmpty ? usageList.last : 0,
           timeInGoodOrModeratePercentToday:
               (summary['goodPercentage'] as num? ?? 0).toInt(),
-          directHoursToday:
-              (summary['directHoursToday'] as num? ?? 0).toDouble(),
-          energySavedPercent:
-              (summary['energySavedPercent'] as num? ?? 0).toInt(),
+          directHoursToday: (summary['directHoursToday'] as num? ?? 0)
+              .toDouble(),
+          energySavedPercent: (summary['energySavedPercent'] as num? ?? 0)
+              .toInt(),
         ),
       );
       _lastAnalyticsLoadedAtByDevice[device.id] = DateTime.now();
@@ -288,7 +292,10 @@ class DeviceHubController extends ChangeNotifier {
     }
   }
 
-  Future<void> loadControlForDevice(String deviceId, {bool silent = true}) async {
+  Future<void> loadControlForDevice(
+    String deviceId, {
+    bool silent = true,
+  }) async {
     try {
       final control = await _controlApi.getControl(deviceId);
       _replaceDevice(
@@ -310,16 +317,34 @@ class DeviceHubController extends ChangeNotifier {
       return null;
     }
 
-    final deviceId = device.id;
+    return updateControlForDevice(device.id, patch);
+  }
+
+  Future<String?> setPowerForDevice(String deviceId, bool isOn) async {
+    return updateControlForDevice(
+      deviceId,
+      {
+        'power': isOn,
+        if (!isOn) 'smartMode': false,
+      },
+    );
+  }
+
+  Future<String?> updateControlForDevice(
+    String deviceId,
+    Map<String, dynamic> patch,
+  ) async {
+    final exists = _devices.any((item) => item.id == deviceId);
+    if (!exists) {
+      return null;
+    }
+
     if (_controlPending.contains(deviceId)) {
       return null;
     }
 
     _controlPending.add(deviceId);
-    _replaceDevice(
-      deviceId,
-      (existing) => existing.copyWithFromPatch(patch),
-    );
+    _replaceDevice(deviceId, (existing) => existing.copyWithFromPatch(patch));
 
     try {
       final res = await _controlApi.updateControl(deviceId, patch: patch);
@@ -367,7 +392,10 @@ class DeviceHubController extends ChangeNotifier {
     _replaceDevice(updated.id, (_) => updated);
   }
 
-  void _replaceDevice(String deviceId, Device Function(Device current) builder) {
+  void _replaceDevice(
+    String deviceId,
+    Device Function(Device current) builder,
+  ) {
     final index = _devices.indexWhere((device) => device.id == deviceId);
     if (index < 0) {
       return;
@@ -386,7 +414,15 @@ class DeviceHubController extends ChangeNotifier {
     }
 
     _pollTimer = Timer.periodic(_pollInterval, (_) async {
-      await loadLatestForSelectedDevice(silent: true);
+      final device = selectedDevice;
+      if (device == null) {
+        return;
+      }
+
+      await Future.wait([
+        loadLatestForSelectedDevice(silent: true),
+        loadControlForDevice(device.id, silent: true),
+      ]);
     });
   }
 

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class FanSpeedSegment extends StatelessWidget {
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Color activeColor;
   final Color inactiveFill;
   final Color inactiveTextColor;

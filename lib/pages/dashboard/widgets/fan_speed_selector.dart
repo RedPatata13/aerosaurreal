@@ -4,7 +4,7 @@ import '/../../models/device.dart';
 
 class FanSpeedSelector extends StatelessWidget {
   final FanSpeed value;
-  final ValueChanged<FanSpeed> onChanged;
+  final ValueChanged<FanSpeed>? onChanged;
   final Color surfaceColor;
   final Color borderColor;
   final Color activeColor;
@@ -27,6 +27,8 @@ class FanSpeedSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isEnabled = onChanged != null;
+
     return Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
@@ -39,7 +41,7 @@ class FanSpeedSelector extends StatelessWidget {
             child: FanSpeedSegment(
               label: 'Slow',
               selected: value == FanSpeed.slow,
-              onTap: () => onChanged(FanSpeed.slow),
+              onTap: isEnabled ? () => onChanged!(FanSpeed.slow) : null,
               activeColor: activeColor,
               inactiveFill: inactiveFill,
               inactiveTextColor: inactiveTextColor,
@@ -52,7 +54,7 @@ class FanSpeedSelector extends StatelessWidget {
             child: FanSpeedSegment(
               label: 'Moderate',
               selected: value == FanSpeed.moderate,
-              onTap: () => onChanged(FanSpeed.moderate),
+              onTap: isEnabled ? () => onChanged!(FanSpeed.moderate) : null,
               activeColor: activeColor,
               inactiveFill: inactiveFill,
               inactiveTextColor: inactiveTextColor,
@@ -65,7 +67,7 @@ class FanSpeedSelector extends StatelessWidget {
             child: FanSpeedSegment(
               label: 'Fast',
               selected: value == FanSpeed.fast,
-              onTap: () => onChanged(FanSpeed.fast),
+              onTap: isEnabled ? () => onChanged!(FanSpeed.fast) : null,
               activeColor: activeColor,
               inactiveFill: inactiveFill,
               inactiveTextColor: inactiveTextColor,

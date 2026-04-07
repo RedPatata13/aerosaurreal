@@ -1,23 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:app_settings/app_settings.dart';
-import '../../components/wifi_password_dialog.dart';
 import 'widgets/settings_section.dart';
 import 'widgets/settings_tile.dart';
 import '../../main.dart';
 import '../../routes/routes.dart';
 import './../home/widgets/home_header.dart';
 import '../../services/api/api_client.dart';
-import '../../services/api/devices_api.dart';
-import '../../services/device/device_setup_service.dart';
+import '../../services/device/wifi_service.dart';
 import '../device_management/device_management_args.dart';
 import 'dialogs/change_email_dialog/update_email_dialog.dart';
 import 'dialogs/change_password_dialog/set_password_dialog.dart';
 import 'dialogs/change_username_dialog/update_username_dialog.dart';
-import '../../services/device/wifi_service.dart';
 import '../../services/auth/google_auth_service.dart';
 import '../../services/repositories/premium_repository.dart';
-import '../../../models/device.dart';
+import '../../models/device.dart';
 import 'package:provider/provider.dart';
 import '../../state/user_store.dart';
 
@@ -67,6 +64,7 @@ class _SettingsPageState extends State<SettingsPage> {
       case 'PREMIUM_QUARTERLY':
         return 'Premium Quarterly';
       default:
+        if (planId.startsWith('P-')) return 'Premium Plan';
         return planId.replaceAll('_', ' ');
     }
   }
@@ -157,48 +155,6 @@ class _SettingsPageState extends State<SettingsPage> {
           _linkingGoogle = false;
         });
       }
-    }
-  }
-
-  Future<void> _showSaveWifiPasswordDialog() async {
-    final setupService = DeviceSetupService(
-      DevicesApi(context.read<ApiClient>()),
-    );
-    final wifiName = await setupService.getSuggestedWifiName();
-    if (wifiName == null || wifiName.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Connect your phone to Wi-Fi first.')),
-      );
-      return;
-    }
-
-    final saved = await setupService.getSavedCredentialsForCurrentWifi();
-    final result = await showDialog<WifiPasswordDialogResult>(
-      context: context,
-      builder: (_) => WifiPasswordDialog(
-        title: 'Save Wi-Fi Password',
-        wifiName: wifiName,
-        actionLabel: 'Save',
-        initialPassword: saved?.password,
-      ),
-    );
-
-    if (result == null) return;
-
-    try {
-      await setupService.saveCurrentWifiPassword(result.password);
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Saved Wi-Fi password for $wifiName.')),
-      );
-      setState(() {});
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -386,6 +342,10 @@ class _SettingsPageState extends State<SettingsPage> {
                         builder: (context, snapshot) {
                           final data = snapshot.data;
                           final isPremium = data?['isPremium'] == true;
+                          final status =
+                              (data?['status'] ?? '').toString().toUpperCase();
+                          final isCancelledButActive =
+                              isPremium && status == 'CANCELLED';
                           final planName = _formatPlanName(
                             data?['premiumPlan']?.toString(),
                           );
@@ -396,6 +356,8 @@ class _SettingsPageState extends State<SettingsPage> {
                               snapshot.connectionState ==
                                   ConnectionState.waiting
                               ? 'Checking...'
+                              : isCancelledButActive
+                              ? 'Cancelled'
                               : isPremium
                               ? 'Subscribed'
                               : 'Free';
@@ -403,6 +365,8 @@ class _SettingsPageState extends State<SettingsPage> {
                               snapshot.connectionState ==
                                   ConnectionState.waiting
                               ? Colors.grey
+                              : isCancelledButActive
+                              ? Colors.orange
                               : isPremium
                               ? Colors.green
                               : theme.colorScheme.primary;
@@ -494,10 +458,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                   ),
                             ),
                             onTap: () {
-                              if (isConnected) {
-                                _showSaveWifiPasswordDialog();
-                                return;
-                              }
                               AppSettings.openAppSettings(
                                 type: AppSettingsType.wifi,
                               );
