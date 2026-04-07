@@ -148,19 +148,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
   }
 
   Future<void> _provisionAfterRegistration(String deviceId) async {
-    try {
-      await _setupService.autoProvisionIfPossible(rawCode: deviceId);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Device connected using saved Wi-Fi credentials.'),
-        ),
-      );
-      await Future.delayed(const Duration(seconds: 3));
-      await _loadDevices(silent: true);
-    } catch (_) {
-      await _showWifiPasswordDialog(deviceId);
-    }
+    await _showWifiPasswordDialog(deviceId);
   }
 
   Future<void> _showWifiPasswordDialog(String deviceId) async {
@@ -175,14 +163,12 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
       return;
     }
 
-    final saved = await _setupService.getSavedCredentialsForCurrentWifi();
     final result = await showDialog<WifiPasswordDialogResult>(
       context: context,
       builder: (_) => WifiPasswordDialog(
         title: 'Provision Wi-Fi',
         wifiName: wifiName,
         actionLabel: 'Provision',
-        initialPassword: saved?.password,
       ),
     );
 
@@ -201,7 +187,6 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     }
 
     try {
-      await _setupService.saveWifiCredentials(ssid: wifiName, password: pass);
       await _setupService.provisionWifi(
         rawCode: deviceId,
         ssid: wifiName,

@@ -9,6 +9,28 @@ class PremiumRepository {
 
   final ApiClient _api;
 
+  bool _paymayaStatusAllowsPremium(String status, String expiresAt) {
+    if (status == 'ACTIVE') return true;
+    if (status != 'CANCELLED' || expiresAt.isEmpty) return false;
+
+    try {
+      return DateTime.now().isBefore(DateTime.parse(expiresAt).toLocal());
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool _paypalStatusAllowsPremium(String status, String expiresAt) {
+    if (status == 'ACTIVE') return true;
+    if (status != 'CANCELLED' || expiresAt.isEmpty) return false;
+
+    try {
+      return DateTime.now().isBefore(DateTime.parse(expiresAt).toLocal());
+    } catch (_) {
+      return false;
+    }
+  }
+
   Map<String, dynamic> _decodeBody(String raw) {
     if (raw.trim().isEmpty) return <String, dynamic>{};
 
@@ -31,7 +53,10 @@ class PremiumRepository {
     final paymayaBody = _decodeBody(paymayaRes.body);
 
     if (paymayaRes.statusCode >= 200 && paymayaRes.statusCode < 300) {
-      if (paymayaBody['isPremium'] == true) {
+      final paymayaStatus = (paymayaBody['status'] ?? '').toString().toUpperCase();
+      final paymayaExpiresAt = (paymayaBody['expiresAt'] ?? '').toString();
+      if (paymayaBody['isPremium'] == true ||
+          _paymayaStatusAllowsPremium(paymayaStatus, paymayaExpiresAt)) {
         return {...paymayaBody, 'provider': 'paymaya'};
       }
     } else {
@@ -42,7 +67,7 @@ class PremiumRepository {
       Endpoints.billingSubscriptionStatus(userId),
     );
 
-    if (paypalRes.statusCode == 404) {
+    if (paypalRes.statusCode == 404 || paypalRes.statusCode >= 500) {
       return {...paymayaBody, 'provider': 'paymaya'};
     }
 
@@ -50,10 +75,11 @@ class PremiumRepository {
 
     if (paypalRes.statusCode >= 200 && paypalRes.statusCode < 300) {
       final status = (paypalBody['status'] ?? '').toString().toUpperCase();
+      final expiresAt = (paypalBody['nextBillingTime'] ?? '').toString();
       return {
-        'isPremium': status == 'ACTIVE',
+        'isPremium': _paypalStatusAllowsPremium(status, expiresAt),
         'premiumPlan': paypalBody['planId'],
-        'expiresAt': paypalBody['nextBillingTime'],
+        'expiresAt': expiresAt,
         'provider': 'paypal',
         'status': status,
       };
@@ -65,10 +91,15 @@ class PremiumRepository {
   Future<Map<String, dynamic>> createPaymayaCheckout({
     required String userId,
     required Map<String, dynamic> buyer,
+    Map<String, dynamic>? redirectUrls,
   }) async {
     final res = await _api.post(
       Endpoints.paymayaCheckout,
-      body: {'userId': userId, 'planId': 'PREMIUM_QUARTERLY', 'buyer': buyer},
+      body: {
+        'userId': userId,
+        'buyer': buyer,
+        if (redirectUrls != null) 'redirectUrls': redirectUrls,
+      },
     );
 
     final body = _decodeBody(res.body);
@@ -89,6 +120,42 @@ class PremiumRepository {
       body: {'userId': userId, 'planId': planId},
     );
 
+    final body = _decodeBody(res.body);
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return body;
+    }
+
+    throw ApiException(res.statusCode, _errorBody(res.body));
+  }
+
+  Future<Map<String, dynamic>> getPaymayaPaymentStatus({
+    required String paymentId,
+    required String userId,
+  }) async {
+    final res = await _api.get(Endpoints.paymayaStatus(paymentId, userId));
+    final body = _decodeBody(res.body);
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return body;
+    }
+
+    throw ApiException(res.statusCode, _errorBody(res.body));
+  }
+
+  Future<Map<String, dynamic>> cancelSubscription(String userId) async {
+    final res = await _api.delete(Endpoints.billingSubscriptionStatus(userId));
+    final body = _decodeBody(res.body);
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return body;
+    }
+
+    throw ApiException(res.statusCode, _errorBody(res.body));
+  }
+
+  Future<Map<String, dynamic>> cancelPaymayaPremium(String userId) async {
+    final res = await _api.delete(Endpoints.paymayaCancelPremium(userId));
     final body = _decodeBody(res.body);
 
     if (res.statusCode >= 200 && res.statusCode < 300) {

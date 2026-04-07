@@ -8,6 +8,9 @@ class Endpoints {
   static const billingSubscription = '/billing/subscription';
   static const paymayaCheckout = '/paymaya/checkout';
   static String paymayaPremium(String userId) => '/paymaya/premium/$userId';
+  static String paymayaStatus(String paymentId, String userId) =>
+      '/paymaya/status/$paymentId?userId=$userId';
+  static String paymayaCancelPremium(String userId) => '/paymaya/premium/$userId';
   static String billingSubscriptionStatus(String userId) =>
       '/billing/subscription/$userId';
   static String notificationMarkRead(String notificationId) =>

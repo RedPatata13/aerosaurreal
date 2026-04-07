@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class ToggleRow extends StatelessWidget {
   final String label;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
   final TextStyle labelStyle;
 
   const ToggleRow({

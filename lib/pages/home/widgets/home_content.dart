@@ -157,7 +157,9 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
       listenable: _controller,
       builder: (context, _) {
         if (_controller.devicesLoading) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
         }
 
         if (_controller.devicesError != null) {
@@ -175,7 +177,10 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(_controller.devicesError!, textAlign: TextAlign.center),
+                    Text(
+                      _controller.devicesError!,
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 12),
                     SizedBox(
                       height: 42,
@@ -235,13 +240,24 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                         Dashboard(
                           devices: devicesForUi,
                           selectedDeviceIndex: _controller.selectedDeviceIndex,
-                          onControlChanged: (patch) async {
-                            final error = await _controller
-                                .updateControlForSelectedDevice(patch);
+                          onTogglePower: (deviceId, isOn) async {
+                            final error = await _controller.setPowerForDevice(
+                              deviceId,
+                              isOn,
+                            );
                             if (error != null && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(error)),
-                              );
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(SnackBar(content: Text(error)));
+                            }
+                          },
+                          onControlChanged: (deviceId, patch) async {
+                            final error = await _controller
+                                .updateControlForDevice(deviceId, patch);
+                            if (error != null && context.mounted) {
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(SnackBar(content: Text(error)));
                             }
                           },
                           onSelectDevice: (index) async {
@@ -389,7 +405,9 @@ class _PremiumLockedPage extends StatelessWidget {
                           message,
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurface.withValues(alpha: 0.72),
+                            color: colorScheme.onSurface.withValues(
+                              alpha: 0.72,
+                            ),
                             height: 1.4,
                           ),
                         ),
@@ -398,6 +416,14 @@ class _PremiumLockedPage extends StatelessWidget {
                           width: double.infinity,
                           child: ElevatedButton(
                             onPressed: onUnlock,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
                             child: const Text('Get Premium'),
                           ),
                         ),
