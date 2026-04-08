@@ -225,6 +225,9 @@ class _SettingsPageState extends State<SettingsPage> {
         uid: uid,
         devices: devicesState,
         onDevicesChanged: (next) {
+          if (!mounted) {
+            return;
+          }
           setState(() {
             devicesState = next;
             if (selectedDeviceIndex >= next.length) selectedDeviceIndex = 0;
