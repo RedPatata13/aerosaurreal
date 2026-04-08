@@ -1,6 +1,7 @@
 import 'package:aerosaur/routes/routes.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../components/app_dialogs.dart';
@@ -32,7 +33,11 @@ class DeviceManagementPage extends StatefulWidget {
 }
 
 class _DeviceManagementPageState extends State<DeviceManagementPage> {
-  final _deviceIdController = TextEditingController();
+  final _deviceCodeControllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
+  final _deviceCodeFocusNodes = List.generate(6, (_) => FocusNode());
   final _deviceNameController = TextEditingController();
 
   late final DevicesApi _devicesApi;
@@ -59,9 +64,66 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
 
   @override
   void dispose() {
-    _deviceIdController.dispose();
+    for (final controller in _deviceCodeControllers) {
+      controller.dispose();
+    }
+    for (final focusNode in _deviceCodeFocusNodes) {
+      focusNode.dispose();
+    }
     _deviceNameController.dispose();
     super.dispose();
+  }
+
+  String get _deviceCode =>
+      _deviceCodeControllers.map((controller) => controller.text).join();
+
+  bool get _hasCompleteDeviceCode =>
+      _deviceCodeControllers.every((controller) => controller.text.isNotEmpty);
+
+  void _setDeviceCode(String value) {
+    final normalized = value.trim().toUpperCase();
+    for (var index = 0; index < _deviceCodeControllers.length; index++) {
+      _deviceCodeControllers[index].text = index < normalized.length
+          ? normalized[index]
+          : '';
+    }
+    if (normalized.length < _deviceCodeFocusNodes.length) {
+      _deviceCodeFocusNodes[normalized.length].requestFocus();
+    } else {
+      _deviceCodeFocusNodes.last.unfocus();
+    }
+    setState(() {});
+  }
+
+  void _clearDeviceCode() {
+    for (final controller in _deviceCodeControllers) {
+      controller.clear();
+    }
+    setState(() {});
+  }
+
+  void _onCodeChanged(int index, String value) {
+    if (value.length > 1) {
+      final normalized = value
+          .replaceAll(RegExp(r'[^A-Za-z0-9]'), '')
+          .toUpperCase();
+      _setDeviceCode(normalized);
+      return;
+    }
+
+    if (value.isNotEmpty && index < _deviceCodeFocusNodes.length - 1) {
+      _deviceCodeFocusNodes[index + 1].requestFocus();
+    }
+
+    setState(() {});
+  }
+
+  void _onCodeBackspace(int index) {
+    if (index > 0 && _deviceCodeControllers[index].text.isEmpty) {
+      _deviceCodeFocusNodes[index - 1].requestFocus();
+      _deviceCodeControllers[index - 1].clear();
+      setState(() {});
+    }
   }
 
   Future<void> _loadDevices({bool silent = false}) async {
@@ -100,7 +162,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     String? rawCode,
     bool openProvisionAfterRegister = true,
   }) async {
-    final rawInput = rawCode ?? _deviceIdController.text.trim();
+    final rawInput = rawCode ?? _deviceCode.trim();
     final name = _deviceNameController.text.trim();
 
     if (rawInput.isEmpty || _saving) {
@@ -123,7 +185,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
 
       if (!mounted) return;
 
-      _deviceIdController.clear();
+      _clearDeviceCode();
       _deviceNameController.clear();
       setState(() => _saving = false);
 
@@ -250,7 +312,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     final result = await Navigator.pushNamed(context, AppRoutes.qrScanner);
 
     if (result is String && result.trim().isNotEmpty) {
-      _deviceIdController.text = result.trim();
+      _setDeviceCode(result.trim());
 
       String? registeredDeviceId;
 
@@ -272,7 +334,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
           await _loadDevices(silent: _devices.isNotEmpty);
 
           if (!mounted) return;
-          _deviceIdController.clear();
+          _clearDeviceCode();
           _deviceNameController.clear();
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -345,10 +407,135 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                                     .copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 12),
-                          FilledInput(
-                            controller: _deviceIdController,
-                            fill: theme.inputDecorationTheme.fillColor!,
-                            hint: 'Enter Device ID (e.g. AIR123)',
+                          Text(
+                            'Device Code',
+                            style:
+                                (theme.textTheme.bodyMedium ??
+                                        const TextStyle())
+                                    .copyWith(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 10),
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              const gap = 6.0;
+                              final totalGap =
+                                  gap * (_deviceCodeControllers.length - 1);
+                              final boxWidth =
+                                  ((constraints.maxWidth - totalGap) /
+                                          _deviceCodeControllers.length)
+                                      .clamp(34.0, 42.0);
+
+                              return Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  _deviceCodeControllers.length,
+                                  (index) {
+                                    return Padding(
+                                      padding: EdgeInsets.only(
+                                        right:
+                                            index ==
+                                                _deviceCodeControllers.length -
+                                                    1
+                                            ? 0
+                                            : gap,
+                                      ),
+                                      child: SizedBox(
+                                        width: boxWidth,
+                                        height: 46,
+                                        child: Focus(
+                                          onKeyEvent: (node, event) {
+                                            if (event is KeyDownEvent &&
+                                                event.logicalKey ==
+                                                    LogicalKeyboardKey
+                                                        .backspace) {
+                                              _onCodeBackspace(index);
+                                            }
+                                            return KeyEventResult.ignored;
+                                          },
+                                          child: TextField(
+                                            controller:
+                                                _deviceCodeControllers[index],
+                                            focusNode:
+                                                _deviceCodeFocusNodes[index],
+                                            textAlign: TextAlign.center,
+                                            textCapitalization:
+                                                TextCapitalization.characters,
+                                            cursorColor:
+                                                theme.colorScheme.primary,
+                                            style: theme.textTheme.titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                            inputFormatters: [
+                                              LengthLimitingTextInputFormatter(
+                                                1,
+                                              ),
+                                              FilteringTextInputFormatter.allow(
+                                                RegExp(r'[A-Za-z0-9]'),
+                                              ),
+                                              UpperCaseTextFormatter(),
+                                            ],
+                                            decoration: InputDecoration(
+                                              filled: true,
+                                              fillColor: theme
+                                                  .inputDecorationTheme
+                                                  .fillColor,
+                                              hintText: '-',
+                                              counterText: '',
+                                              contentPadding: EdgeInsets.zero,
+                                              border: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                borderSide: BorderSide(
+                                                  color: theme.dividerColor,
+                                                ),
+                                              ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                borderSide: BorderSide(
+                                                  color: theme.dividerColor,
+                                                ),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                borderSide: BorderSide(
+                                                  color:
+                                                      theme.colorScheme.primary,
+                                                  width: 1.4,
+                                                ),
+                                              ),
+                                            ),
+                                            onChanged: (value) =>
+                                                _onCodeChanged(index, value),
+                                            onSubmitted: (_) {
+                                              if (index ==
+                                                      _deviceCodeControllers
+                                                              .length -
+                                                          1 &&
+                                                  _hasCompleteDeviceCode) {
+                                                _submitNewDevice();
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Enter the 6-character code shown on your device, or scan its QR code below.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
+                              height: 1.4,
+                            ),
                           ),
                           const SizedBox(height: 10),
                           FilledInput(
@@ -361,7 +548,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
                             width: double.infinity,
                             height: 47,
                             child: ElevatedButton(
-                              onPressed: _saving
+                              onPressed: _saving || !_hasCompleteDeviceCode
                                   ? null
                                   : () => _submitNewDevice(),
                               style: ElevatedButton.styleFrom(
@@ -457,6 +644,16 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
         ),
       ),
     );
+  }
+}
+
+class UpperCaseTextFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }
 

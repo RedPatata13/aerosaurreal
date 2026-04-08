@@ -9,6 +9,7 @@ class NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final palette = _paletteFor(item.visualType);
 
     return Material(
@@ -20,12 +21,15 @@ class NotificationCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: item.isRead
-                ? const Color(0xFF101217)
-                : const Color(0xFF151922),
+                ? Colors.transparent
+                : theme.colorScheme.primary.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(16),
-            border: item.isRead
-                ? Border.all(color: const Color(0xFF333942), width: 1.1)
-                : null,
+            border: Border.all(
+              color: item.isRead
+                  ? theme.dividerColor
+                  : theme.colorScheme.primary.withValues(alpha: 0.34),
+              width: 1.1,
+            ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -46,8 +50,8 @@ class NotificationCard extends StatelessWidget {
                   children: [
                     Text(
                       item.title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -55,8 +59,10 @@ class NotificationCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       item.body,
-                      style: const TextStyle(
-                        color: Color(0xFFD7DCE3),
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.78,
+                        ),
                         fontSize: 14,
                         height: 1.3,
                       ),
@@ -64,8 +70,10 @@ class NotificationCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       _timeAgo(item.createdAt),
-                      style: const TextStyle(
-                        color: Color(0xFF9AA2AC),
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.58,
+                        ),
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),

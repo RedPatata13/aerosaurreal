@@ -7,11 +7,13 @@ class NotificationToggleSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF101217),
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF2A3037), width: 1.2),
+        border: Border.all(color: theme.dividerColor, width: 1.2),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Column(
@@ -28,8 +30,8 @@ class NotificationToggleSection extends StatelessWidget {
                     Expanded(
                       child: Text(
                         item.label,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
@@ -40,8 +42,8 @@ class NotificationToggleSection extends StatelessWidget {
                 ),
               ),
               if (isFirst)
-                const Divider(
-                  color: Color(0xFF2A3037),
+                Divider(
+                  color: theme.dividerColor,
                   thickness: 1,
                   height: 1,
                 ),
@@ -61,6 +63,8 @@ class _MockupSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return GestureDetector(
       onTap: () => onChanged(!value),
       child: AnimatedContainer(
@@ -69,17 +73,24 @@ class _MockupSwitch extends StatelessWidget {
         height: 36,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: value ? const Color(0xFF4C6787) : Colors.transparent,
+          color: value ? theme.colorScheme.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(28),
-          border: value ? null : Border.all(color: Colors.white, width: 2.2),
+          border: value
+              ? null
+              : Border.all(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  width: 2.2,
+                ),
         ),
         child: Align(
           alignment: value ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
             width: 26,
             height: 26,
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: value
+                  ? theme.colorScheme.onPrimary
+                  : theme.colorScheme.onSurface,
               shape: BoxShape.circle,
             ),
           ),
