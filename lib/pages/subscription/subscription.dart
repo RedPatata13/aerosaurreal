@@ -21,7 +21,7 @@ class SubscriptionPage extends StatefulWidget {
 class _SubscriptionPageState extends State<SubscriptionPage>
     with WidgetsBindingObserver {
   static const _planPrice = '₱ 149.99';
-  static const _planSubtitle = 'Billed every 3 months';
+  static const _planSubtitle = 'Billed every month';
   static const _contentMaxWidth = 520.0;
   static const _premiumPollAttempts = 8;
   static const _premiumPollDelay = Duration(seconds: 2);
@@ -542,7 +542,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                                                             .start,
                                                     children: [
                                                       Text(
-                                                        'Every 3 Months',
+                                                        'Every Month',
                                                         style: theme
                                                             .textTheme
                                                             .titleMedium
@@ -1051,4 +1051,3 @@ class _FeatureTile extends StatelessWidget {
     );
   }
 }
-

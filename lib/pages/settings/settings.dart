@@ -340,12 +340,13 @@ class _SettingsPageState extends State<SettingsPage> {
                               .toUpperCase();
                           final isCancelledButActive =
                               isPremium && status == 'CANCELLED';
+                          final shouldShowExpiry = isPremium;
                           final planName = _formatPlanName(
                             data?['premiumPlan']?.toString(),
                           );
-                          final expiryLabel = _formatExpiry(
-                            data?['expiresAt']?.toString(),
-                          );
+                          final expiryLabel = shouldShowExpiry
+                              ? _formatExpiry(data?['expiresAt']?.toString())
+                              : 'No active premium plan';
                           final statusText =
                               snapshot.connectionState ==
                                   ConnectionState.waiting
@@ -399,9 +400,7 @@ class _SettingsPageState extends State<SettingsPage> {
                               ),
                               SettingsTile(
                                 icon: const Icon(Icons.event_outlined),
-                                title: isPremium
-                                    ? 'Renews On'
-                                    : 'Subscription End',
+                                title: isPremium ? 'Renews On' : 'Subscription',
                                 subtitle: expiryLabel,
                               ),
                               SettingsTile(
