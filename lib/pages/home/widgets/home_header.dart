@@ -108,6 +108,23 @@ class HomeHeader extends StatelessWidget {
             const Spacer(),
           ],
 
+          if (onShowTutorial != null) ...[
+            _wrapShowcase(
+              showcaseKey: tutorialButtonKey,
+              title: 'Need a quick tour?',
+              description:
+                  'Tap this help button anytime to replay the walkthrough and learn what each part of the app does.',
+              shapeBorder: const CircleBorder(),
+              child: TopIconButton(
+                onPressed: onShowTutorial!,
+                icon: Icons.help_outline_rounded,
+                tooltip: 'Show tutorial',
+                color: iconColor,
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
+
           TopIconButton(
             onPressed: () async {
               try {
@@ -126,23 +143,6 @@ class HomeHeader extends StatelessWidget {
             color: iconColor,
           ),
           const SizedBox(width: 4),
-
-          if (onShowTutorial != null) ...[
-            _wrapShowcase(
-              showcaseKey: tutorialButtonKey,
-              title: 'Need a quick tour?',
-              description:
-                  'Tap this help button anytime to replay the walkthrough and learn what each part of the app does.',
-              shapeBorder: const CircleBorder(),
-              child: TopIconButton(
-                onPressed: onShowTutorial!,
-                icon: Icons.help_outline_rounded,
-                tooltip: 'Show tutorial',
-                color: iconColor,
-              ),
-            ),
-            const SizedBox(width: 4),
-          ],
 
           _wrapShowcase(
             showcaseKey: addButtonKey,
