@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:app_settings/app_settings.dart';
+import '../../components/app_dialogs.dart';
 import 'widgets/settings_section.dart';
 import 'widgets/settings_tile.dart';
 import '../../main.dart';
@@ -206,12 +207,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       Builder(
                         builder: (context) {
-                          final hasGoogleProvider =
-                              user?.providerData.any(
-                                (p) => p.providerId == 'google.com',
-                              ) ??
-                              false;
-
                           final hasPassword =
                               user?.providerData.any(
                                 (p) => p.providerId == 'password',
@@ -236,7 +231,7 @@ class _SettingsPageState extends State<SettingsPage> {
                                           context: context,
                                           barrierDismissible: false,
                                           builder: (_) =>
-                                              UpdateEmailDialog(user: user!),
+                                              UpdateEmailDialog(user: user),
                                         );
                                         if (!mounted) return;
                                         setState(() {});
@@ -265,13 +260,11 @@ class _SettingsPageState extends State<SettingsPage> {
                                 trailing: const Icon(Icons.chevron_right),
                                 onTap: () async {
                                   if (email == null || email.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Set up your email first to manage password',
-                                        ),
-                                        backgroundColor: Colors.orange,
-                                      ),
+                                    await showAppMessageDialog(
+                                      context,
+                                      title: 'Email Required',
+                                      message:
+                                          'Set up your email first to manage password.',
                                     );
                                     return;
                                   }
@@ -342,8 +335,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         builder: (context, snapshot) {
                           final data = snapshot.data;
                           final isPremium = data?['isPremium'] == true;
-                          final status =
-                              (data?['status'] ?? '').toString().toUpperCase();
+                          final status = (data?['status'] ?? '')
+                              .toString()
+                              .toUpperCase();
                           final isCancelledButActive =
                               isPremium && status == 'CANCELLED';
                           final planName = _formatPlanName(
@@ -561,27 +555,16 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                     onPressed: () async {
-                      final shouldLogout = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Confirm Logout'),
-                          content: const Text(
-                            'Are you sure you want to logout?',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              child: const Text('Logout'),
-                            ),
-                          ],
-                        ),
+                      final shouldLogout = await showAppConfirmationDialog(
+                        context,
+                        title: 'Confirm Logout',
+                        message: 'Are you sure you want to logout?',
+                        cancelLabel: 'Cancel',
+                        confirmLabel: 'Logout',
+                        confirmColor: const Color(0xFFA31618),
                       );
 
-                      if (shouldLogout ?? false) {
+                      if (shouldLogout) {
                         await FirebaseAuth.instance.signOut();
                         if (!mounted) return;
                         Navigator.pushReplacementNamed(context, '/login');

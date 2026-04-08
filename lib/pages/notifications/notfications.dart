@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +9,7 @@ import '../../models/notification_preferences.dart';
 import '../../routes/routes.dart';
 import '../../services/api/api_client.dart';
 import '../../services/api/notifications_api.dart';
+import '../../state/notifications_store.dart';
 import '../device_management/device_management_args.dart';
 import '../home/widgets/home_header.dart';
 import 'widgets/notification_card.dart';
@@ -21,6 +24,7 @@ class NotificationsPage extends StatefulWidget {
 
 class _NotificationsPageState extends State<NotificationsPage> {
   late final NotificationsApi _notificationsApi;
+  late final NotificationsStore _notificationsStore;
 
   NotificationPreferences _preferences = const NotificationPreferences(
     enabled: true,
@@ -39,9 +43,26 @@ class _NotificationsPageState extends State<NotificationsPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _notificationsApi = NotificationsApi(context.read<ApiClient>());
+    _notificationsStore = context.read<NotificationsStore>();
     if (_loading && _items.isEmpty && _error == null) {
       _loadNotifications();
     }
+  }
+
+  @override
+  void dispose() {
+    final hasUnread = _items.any((item) => !item.isRead);
+    if (hasUnread) {
+      _notificationsStore.clearUnreadState();
+      unawaited(
+        _notificationsApi.markAllAsRead().catchError((_) {
+          if (mounted) {
+            _notificationsStore.refreshUnreadState(silent: true);
+          }
+        }),
+      );
+    }
+    super.dispose();
   }
 
   Future<void> _openDeviceManagement(String uid) async {
@@ -73,6 +94,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
         _preferences = response.settings;
         _items = response.items;
       });
+      _notificationsStore.applyReadState(
+        response.items.map((item) => !item.isRead),
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -128,6 +152,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           .map((item) => item.copyWith(isRead: true))
           .toList(growable: false);
     });
+    _notificationsStore.clearUnreadState();
 
     try {
       await _notificationsApi.markAllAsRead();
@@ -137,6 +162,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to mark notifications as read')),
       );
+      _notificationsStore.refreshUnreadState(silent: true);
     } finally {
       if (mounted) {
         setState(() {
@@ -183,6 +209,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           )
           .toList(growable: false);
     });
+    _notificationsStore.applyReadState(_items.map((entry) => !entry.isRead));
 
     try {
       await _notificationsApi.markAsRead(item.notificationId);
@@ -192,6 +219,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to update notification')),
       );
+      _notificationsStore.refreshUnreadState(silent: true);
     }
   }
 

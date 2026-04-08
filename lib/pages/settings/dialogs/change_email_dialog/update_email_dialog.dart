@@ -3,14 +3,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import '../../../../components/app_dialogs.dart';
 import '../../../../firebase_options.dart';
 import 'email_updated_page.dart';
 
 class UpdateEmailDialog extends StatefulWidget {
-  const UpdateEmailDialog({
-    super.key,
-    required this.user,
-  });
+  const UpdateEmailDialog({super.key, required this.user});
 
   final User user;
 
@@ -68,11 +66,10 @@ class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
 
     try {
       if (widget.user.email == email) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('That email is already set on your account.'),
-            backgroundColor: Colors.orange,
-          ),
+        await showAppMessageDialog(
+          context,
+          title: 'Email Already Added',
+          message: 'That email is already set on your account.',
         );
         return;
       }
@@ -82,11 +79,10 @@ class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
       final normalizedEmail = email.toLowerCase();
 
       if (emailExists && currentEmail != normalizedEmail) {
-        messenger.showSnackBar(
-          const SnackBar(
-            content: Text('That email is already in use.'),
-            backgroundColor: Colors.red,
-          ),
+        await showAppMessageDialog(
+          context,
+          title: 'Email Already In Use',
+          message: 'That email is already in use.',
         );
         return;
       }
@@ -113,8 +109,7 @@ class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
           message = 'That email is already in use.';
           break;
         case 'requires-recent-login':
-          message =
-              'Please log in again before changing your email address.';
+          message = 'Please log in again before changing your email address.';
           break;
       }
 
@@ -252,10 +247,7 @@ class _UpdateEmailDialogState extends State<UpdateEmailDialog> {
                               width: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Text(
-                              'Update',
-                              textAlign: TextAlign.center,
-                            ),
+                          : const Text('Update', textAlign: TextAlign.center),
                     ),
                   ),
                 ],

@@ -1,6 +1,6 @@
-import 'package:aerosaur_2nd_sem/services/api/api_client.dart';
-import 'package:aerosaur_2nd_sem/services/api/devices_api.dart';
-import 'package:aerosaur_2nd_sem/services/device/device_setup_service.dart';
+import 'package:aerosaur/services/api/api_client.dart';
+import 'package:aerosaur/services/api/devices_api.dart';
+import 'package:aerosaur/services/device/device_setup_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -362,3 +362,4 @@ class UpperCaseTextFormatter extends TextInputFormatter {
     return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }
+

@@ -1,7 +1,7 @@
 import 'dart:ui';
 
-import 'package:aerosaur_2nd_sem/state/device_hub_controller.dart';
-import 'package:aerosaur_2nd_sem/state/user_store.dart';
+import 'package:aerosaur/state/device_hub_controller.dart';
+import 'package:aerosaur/state/user_store.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -504,3 +504,4 @@ class _NoDeviceFeatureContent extends StatelessWidget {
     );
   }
 }
+

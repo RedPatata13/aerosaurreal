@@ -1,4 +1,4 @@
-import 'package:aerosaur_2nd_sem/pages/device_management/qr_scanner_screen.dart';
+import 'package:aerosaur/pages/device_management/qr_scanner_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'firebase_options.dart';
@@ -19,8 +19,9 @@ import 'package:provider/provider.dart';
 import 'services/api/api_client.dart';
 import 'services/api/notifications_api.dart';
 import 'services/notifications/push_notification_service.dart';
+import 'state/notifications_store.dart';
 import 'state/user_store.dart';
-import 'package:aerosaur_2nd_sem/services/repositories/user_repository.dart';
+import 'package:aerosaur/services/repositories/user_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,11 +39,26 @@ void main() async {
   final pushNotificationService = PushNotificationService(notificationsApi);
   await pushNotificationService.initialize();
 
-  runApp(const MyApp());
+  runApp(
+    MyApp(
+      apiClient: apiClient,
+      notificationsApi: notificationsApi,
+      pushNotificationService: pushNotificationService,
+    ),
+  );
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({
+    super.key,
+    required this.apiClient,
+    required this.notificationsApi,
+    required this.pushNotificationService,
+  });
+
+  final ApiClient apiClient;
+  final NotificationsApi notificationsApi;
+  final PushNotificationService pushNotificationService;
 
   static MyAppState of(BuildContext context) =>
       context.findAncestorStateOfType<MyAppState>()!;
@@ -64,21 +80,22 @@ class MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider<ApiClient>(
-          create: (_) => ApiClient(baseUrl: dotenv.env['API_BASE_URL']!),
-        ),
-        Provider<NotificationsApi>(
-          create: (context) => NotificationsApi(context.read<ApiClient>()),
-        ),
-        Provider<PushNotificationService>(
-          create: (context) =>
-              PushNotificationService(context.read<NotificationsApi>()),
+        Provider<ApiClient>.value(value: widget.apiClient),
+        Provider<NotificationsApi>.value(value: widget.notificationsApi),
+        Provider<PushNotificationService>.value(
+          value: widget.pushNotificationService,
         ),
         Provider<UserRepository>(
           create: (context) => UserRepository(context.read<ApiClient>()),
         ),
         ChangeNotifierProvider<UserStore>(
           create: (context) => UserStore(context.read<UserRepository>()),
+        ),
+        ChangeNotifierProvider<NotificationsStore>(
+          create: (context) => NotificationsStore(
+            context.read<NotificationsApi>(),
+            context.read<PushNotificationService>(),
+          )..refreshUnreadState(silent: true),
         ),
       ],
       child: MaterialApp(
@@ -121,3 +138,4 @@ class MyAppState extends State<MyApp> {
     );
   }
 }
+

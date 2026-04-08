@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../platform/system_settings.dart';
+import '../../../state/notifications_store.dart';
 import 'top_icon_button.dart';
 import '../../../routes/routes.dart';
 
@@ -29,7 +31,7 @@ class HomeHeader extends StatelessWidget {
           if (isHome) ...[
             CircleAvatar(
               radius: 24,
-              backgroundColor: theme.primaryColor.withOpacity(0.75),
+              backgroundColor: theme.primaryColor.withValues(alpha: 0.75),
               child: Icon(
                 Icons.person_outline,
                 color: theme.colorScheme.onPrimary,
@@ -44,7 +46,7 @@ class HomeHeader extends StatelessWidget {
                   Text(
                     'Hello!',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                   Text(
@@ -113,6 +115,9 @@ class HomeHeader extends StatelessWidget {
             icon: Icons.notifications_none,
             tooltip: 'Notifications',
             color: iconColor,
+            showIndicator: context.select<NotificationsStore, bool>(
+              (store) => store.hasUnread,
+            ),
           ),
           const SizedBox(width: 4),
 

@@ -37,6 +37,15 @@ class PushNotificationService {
   static const String _storedUserIdKey = 'push_notification_user_id';
 
   bool _initialized = false;
+  final Set<VoidCallback> _foregroundRefreshListeners = <VoidCallback>{};
+
+  void addForegroundRefreshListener(VoidCallback listener) {
+    _foregroundRefreshListeners.add(listener);
+  }
+
+  void removeForegroundRefreshListener(VoidCallback listener) {
+    _foregroundRefreshListeners.remove(listener);
+  }
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -164,5 +173,9 @@ class PushNotificationService {
       ),
       payload: jsonEncode(message.data),
     );
+
+    for (final listener in _foregroundRefreshListeners) {
+      listener();
+    }
   }
 }

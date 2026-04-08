@@ -1,4 +1,4 @@
-# aerosaur_2nd_sem
+# Aerosaur
 
 A new Flutter project.
 

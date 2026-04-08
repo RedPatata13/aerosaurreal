@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../components/app_dialogs.dart';
+
 class LocationGate extends StatefulWidget {
   final Widget child;
   const LocationGate({super.key, required this.child});
@@ -26,39 +28,21 @@ class _LocationGateState extends State<LocationGate> {
           _hasPermission = true;
         });
       } else if (status.isDenied) {
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => AlertDialog(
-            title: const Text('Location Required'),
-            content: const Text(
-              'You must allow location access to use this app.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
+        await showAppMessageDialog(
+          context,
+          title: 'Location Required',
+          message: 'You must allow location access to use this app.',
+          actionLabel: 'Retry',
         );
       } else if (status.isPermanentlyDenied) {
-        await showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => AlertDialog(
-            title: const Text('Location Required'),
-            content: const Text(
+        await showAppMessageDialog(
+          context,
+          title: 'Location Required',
+          message:
               'Location permission is permanently denied. Open app settings to enable it.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => openAppSettings(),
-                child: const Text('Open Settings'),
-              ),
-            ],
-          ),
+          actionLabel: 'Open Settings',
         );
+        await openAppSettings();
       }
     }
   }

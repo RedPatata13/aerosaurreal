@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
+import 'package:provider/provider.dart';
 import '../routes/routes.dart';
+import '../services/api/api_client.dart';
+import '../services/navigation/startup_route_resolver.dart';
 
 class EntryGate extends StatefulWidget {
   const EntryGate({super.key});
@@ -23,7 +26,11 @@ class _EntryGateState extends State<EntryGate> {
       if (!mounted) return;
 
       if (user != null) {
-        Navigator.pushReplacementNamed(context, AppRoutes.premium);
+        final route = await StartupRouteResolver(
+          context.read<ApiClient>(),
+        ).resolve(user.uid);
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, route);
       } else {
         Navigator.pushReplacementNamed(context, AppRoutes.login);
       }

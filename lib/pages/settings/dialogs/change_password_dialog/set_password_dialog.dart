@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../../../components/app_dialogs.dart';
 
 class SetPasswordDialog extends StatefulWidget {
   const SetPasswordDialog({super.key, required this.user});
@@ -43,33 +44,28 @@ class _SetPasswordDialogState extends State<SetPasswordDialog> {
     final confirmPassword = _confirmPasswordController.text;
 
     if (email == null || email.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Set and verify your email first before adding a password.',
-          ),
-          backgroundColor: Colors.orange,
-        ),
+      await showAppMessageDialog(
+        context,
+        title: 'Email Required',
+        message: 'Set and verify your email first before adding a password.',
       );
       return;
     }
 
     if (password.length < 6) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Password must be at least 6 characters long.'),
-          backgroundColor: Colors.orange,
-        ),
+      await showAppMessageDialog(
+        context,
+        title: 'Password Too Short',
+        message: 'Password must be at least 6 characters long.',
       );
       return;
     }
 
     if (password != confirmPassword) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Passwords do not match.'),
-          backgroundColor: Colors.orange,
-        ),
+      await showAppMessageDialog(
+        context,
+        title: 'Passwords Do Not Match',
+        message: 'Make sure both password fields are the same.',
       );
       return;
     }
