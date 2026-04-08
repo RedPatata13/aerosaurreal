@@ -225,18 +225,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final user = FirebaseAuth.instance.currentUser;
     final username = user?.displayName ?? 'User';
     final uid = user?.uid;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0C0E13),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
             HomeHeader(
               username: username,
-              iconColor: Colors.white,
+              iconColor: theme.colorScheme.onSurface,
               onRegisterDevice: () {
                 if (uid == null) return;
                 _openDeviceManagement(uid);
@@ -245,7 +246,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             const SizedBox(height: 10),
             Expanded(
               child: RefreshIndicator(
-                color: const Color(0xFF8FB3DC),
+                color: theme.colorScheme.primary,
                 onRefresh: _loadNotifications,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -298,20 +299,22 @@ class _NotificationsPageState extends State<NotificationsPage> {
       return const SizedBox.shrink();
     }
 
+    final theme = Theme.of(context);
+
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF101217),
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF2A3037), width: 1.2),
+        border: Border.all(color: theme.dividerColor, width: 1.2),
       ),
       padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Notification History',
             style: TextStyle(
-              color: Colors.white,
+              color: theme.colorScheme.onSurface,
               fontSize: 16,
               fontWeight: FontWeight.w800,
             ),
@@ -321,7 +324,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             children: [
               _ActionButton(
                 label: 'Mark all as read',
-                color: const Color(0xFF6D8DB2),
+                color: theme.colorScheme.primary,
                 onPressed: _items.isEmpty ? null : _markAllAsRead,
               ),
               const SizedBox(width: 12),
@@ -334,10 +337,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
           ),
           const SizedBox(height: 14),
           if (_loading)
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: CircularProgressIndicator(color: Color(0xFF8FB3DC)),
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: CircularProgressIndicator(
+                  color: theme.colorScheme.primary,
+                ),
               ),
             )
           else if (_error != null)
@@ -412,6 +417,8 @@ class _HistoryMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
@@ -419,7 +426,10 @@ class _HistoryMessage extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFFBAC2CB), fontSize: 14),
+            style: TextStyle(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+              fontSize: 14,
+            ),
           ),
           if (actionLabel != null && onPressed != null) ...[
             const SizedBox(height: 12),

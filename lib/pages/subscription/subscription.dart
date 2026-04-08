@@ -23,7 +23,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
   static const _planPrice = '₱ 149.99';
   static const _planSubtitle = 'Billed every month';
   static const _contentMaxWidth = 520.0;
-  static const _premiumPollAttempts = 8;
+  static const _premiumPollAttempts = 15;
   static const _premiumPollDelay = Duration(seconds: 2);
 
   static const _features = [

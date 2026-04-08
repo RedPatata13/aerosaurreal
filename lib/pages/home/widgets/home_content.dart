@@ -10,6 +10,7 @@ import 'package:showcaseview/showcaseview.dart';
 
 import '../../../components/navbar.dart';
 import '../../../components/tutorial_showcase.dart';
+import '../../../models/device.dart';
 import '../../../routes/routes.dart';
 import '../../../services/tutorial/app_tutorial_service.dart';
 import '../../dashboard/dashboard.dart';
@@ -24,7 +25,6 @@ import '../../../services/api/readings_api.dart';
 import '../../../services/repositories/premium_repository.dart';
 import 'home_header.dart';
 import 'no_device_content.dart';
-import '../dialogs/register_device_dialog.dart';
 
 class HomeContent extends StatefulWidget {
   const HomeContent({super.key});
@@ -50,6 +50,7 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
   bool _tutorialCheckStarted = false;
   bool _tutorialStartedThisSession = false;
   bool _premiumLoading = true;
+  bool _premiumRefreshing = false;
   bool _isPremium = false;
 
   @override
@@ -78,12 +79,30 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await context.read<UserStore>().loadOrCreate();
-      await _loadPremiumStatus(currentUser.uid);
+      await _refreshPremiumStatus(
+        userId: currentUser.uid,
+        showLoader: true,
+      );
       await _controller.initialize();
     });
   }
 
-  Future<void> _loadPremiumStatus(String userId) async {
+  Future<void> _refreshPremiumStatus({
+    required String userId,
+    bool showLoader = false,
+  }) async {
+    if (_premiumRefreshing) {
+      return;
+    }
+
+    if (showLoader && mounted) {
+      setState(() {
+        _premiumLoading = true;
+      });
+    }
+
+    _premiumRefreshing = true;
+
     try {
       final status = await PremiumRepository(
         context.read<ApiClient>(),
@@ -99,6 +118,7 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
         _isPremium = false;
       });
     } finally {
+      _premiumRefreshing = false;
       if (mounted) {
         setState(() {
           _premiumLoading = false;
@@ -122,15 +142,26 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
     Navigator.of(context).pushReplacementNamed('/login');
   }
 
-  void _showRegisterDeviceDialog() {
-    showDialog<bool>(
-      context: context,
-      builder: (context) => const RegisterDeviceDialog(),
-    ).then((ok) async {
-      if (ok == true) {
-        await _controller.loadDevices();
-      }
-    });
+  Future<void> _openDeviceManagement({
+    required String uid,
+    required List<Device> devicesForUi,
+  }) async {
+    await Navigator.of(context).pushNamed(
+      AppRoutes.deviceManagement,
+      arguments: DeviceManagementArgs(
+        uid: uid,
+        devices: devicesForUi,
+        onDevicesChanged: (next) {
+          if (!mounted) {
+            return;
+          }
+          _controller.applyDeviceList(next);
+        },
+      ),
+    );
+
+    if (!mounted) return;
+    await _controller.loadDevices(silent: true);
   }
 
   List<GlobalKey> _tutorialSteps({required bool hasDevices}) {
@@ -196,6 +227,17 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final isForeground = state == AppLifecycleState.resumed;
     _controller.setForegroundActive(isForeground);
+
+    if (!isForeground) {
+      return;
+    }
+
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) {
+      return;
+    }
+
+    _refreshPremiumStatus(userId: userId);
   }
 
   @override
@@ -293,22 +335,17 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                           : const Color(0xFF111827),
                       onRegisterDevice: () {
                         if (!hasDevices) {
-                          _showRegisterDeviceDialog();
+                          _openDeviceManagement(
+                            uid: uid,
+                            devicesForUi: devicesForUi,
+                          );
                           return;
                         }
 
-                        Navigator.of(context)
-                            .pushNamed(
-                              AppRoutes.deviceManagement,
-                              arguments: DeviceManagementArgs(
-                                uid: uid,
-                                devices: devicesForUi,
-                                onDevicesChanged: _controller.applyDeviceList,
-                              ),
-                            )
-                            .then((_) async {
-                              await _controller.loadDevices(silent: true);
-                            });
+                        _openDeviceManagement(
+                          uid: uid,
+                          devicesForUi: devicesForUi,
+                        );
                       },
                       onShowTutorial: () {
                         _startTutorial(hasDevices: hasDevices);
@@ -361,7 +398,12 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                             )
                           else
                             NoDeviceContent(
-                              onRegisterDevice: _showRegisterDeviceDialog,
+                              onRegisterDevice: () {
+                                _openDeviceManagement(
+                                  uid: uid,
+                                  devicesForUi: devicesForUi,
+                                );
+                              },
                               onLogout: _handleLogoutAndRedirect,
                               registerButtonKey: _emptyStateRegisterKey,
                             ),
@@ -370,10 +412,15 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                             title: 'Premium Required',
                             message:
                                 'Monitoring is available for premium subscribers only.',
-                            onUnlock: () {
-                              Navigator.of(
+                            onUnlock: () async {
+                              await Navigator.of(
                                 context,
                               ).pushNamed(AppRoutes.premium);
+
+                              if (!mounted) return;
+                              final userId = FirebaseAuth.instance.currentUser?.uid;
+                              if (userId == null) return;
+                              await _refreshPremiumStatus(userId: userId);
                             },
                             child: selectedDevice != null
                                 ? Monitoring(
@@ -384,7 +431,12 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                                     title: 'No device registered yet.',
                                     description:
                                         'Register a device to start viewing live monitoring data.',
-                                    onRegisterDevice: _showRegisterDeviceDialog,
+                                    onRegisterDevice: () {
+                                      _openDeviceManagement(
+                                        uid: uid,
+                                        devicesForUi: devicesForUi,
+                                      );
+                                    },
                                   ),
                           ),
                           _PremiumLockedPage(
@@ -392,10 +444,15 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                             title: 'Premium Required',
                             message:
                                 'Insights is available for premium subscribers only.',
-                            onUnlock: () {
-                              Navigator.of(
+                            onUnlock: () async {
+                              await Navigator.of(
                                 context,
                               ).pushNamed(AppRoutes.premium);
+
+                              if (!mounted) return;
+                              final userId = FirebaseAuth.instance.currentUser?.uid;
+                              if (userId == null) return;
+                              await _refreshPremiumStatus(userId: userId);
                             },
                             child: selectedDevice != null
                                 ? Insights(
@@ -406,7 +463,12 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                                     title: 'No device registered yet.',
                                     description:
                                         'Register a device to unlock air quality insights and trends.',
-                                    onRegisterDevice: _showRegisterDeviceDialog,
+                                    onRegisterDevice: () {
+                                      _openDeviceManagement(
+                                        uid: uid,
+                                        devicesForUi: devicesForUi,
+                                      );
+                                    },
                                   ),
                           ),
                         ],
