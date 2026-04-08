@@ -18,6 +18,7 @@ import '../../services/repositories/premium_repository.dart';
 import '../../models/device.dart';
 import 'package:provider/provider.dart';
 import '../../state/user_store.dart';
+import '../../services/location/location_access_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -32,6 +33,7 @@ class _SettingsPageState extends State<SettingsPage> {
   int selectedDeviceIndex = 0;
   bool _linkingGoogle = false;
   Future<Map<String, dynamic>>? _premiumStatusFuture;
+  Future<_ConnectivityState>? _connectivityFuture;
 
   @override
   void didChangeDependencies() {
@@ -41,6 +43,7 @@ class _SettingsPageState extends State<SettingsPage> {
     if (uid == null) return;
 
     _premiumStatusFuture ??= _loadPremiumStatus(uid);
+    _connectivityFuture ??= _loadConnectivityState();
   }
 
   Future<Map<String, dynamic>> _loadPremiumStatus(String uid) {
@@ -56,6 +59,62 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _premiumStatusFuture = _loadPremiumStatus(uid);
     });
+  }
+
+  Future<_ConnectivityState> _loadConnectivityState() async {
+    final locationIssue = await LocationAccessService.getIssue();
+    final wifiName = locationIssue == LocationAccessIssue.none
+        ? await WifiService.getWifiName()
+        : null;
+
+    return _ConnectivityState(locationIssue: locationIssue, wifiName: wifiName);
+  }
+
+  Future<void> _refreshConnectivityState() async {
+    if (!mounted) return;
+    setState(() {
+      _connectivityFuture = _loadConnectivityState();
+    });
+  }
+
+  Future<void> _showLocationResolutionDialog(
+    LocationAccessIssue issue,
+  ) async {
+    if (issue == LocationAccessIssue.none) {
+      return;
+    }
+
+    if (issue == LocationAccessIssue.permissionDenied) {
+      await showAppMessageDialog(
+        context,
+        title: 'Location Permission Needed',
+        message:
+            'Allow location permission so Aerosaur can detect your Wi-Fi and use device setup features properly.',
+        actionLabel: 'OK',
+      );
+      return;
+    }
+
+    final shouldOpen = await showAppConfirmationDialog(
+      context,
+      title: issue == LocationAccessIssue.serviceDisabled
+          ? 'Turn On Location'
+          : 'Location Permission Needed',
+      message: issue == LocationAccessIssue.serviceDisabled
+          ? 'Your phone location is turned off. Enable it so Wi-Fi and connectivity features work properly.'
+          : 'Location permission is disabled for this app. Open settings to enable it.',
+      cancelLabel: 'Close',
+      confirmLabel: issue == LocationAccessIssue.serviceDisabled
+          ? 'Open Location'
+          : 'Open Settings',
+    );
+
+    if (!shouldOpen) {
+      return;
+    }
+
+    await LocationAccessService.openResolution(issue);
+    await _refreshConnectivityState();
   }
 
   String _formatPlanName(String? planId) {
@@ -429,32 +488,94 @@ class _SettingsPageState extends State<SettingsPage> {
                   SettingsSection(
                     title: 'Connectivity',
                     children: [
-                      FutureBuilder<String?>(
-                        future: WifiService.getWifiName(),
+                      FutureBuilder<_ConnectivityState>(
+                        future: _connectivityFuture,
                         builder: (context, snapshot) {
-                          final wifiName = snapshot.data;
-                          final isConnected =
-                              wifiName != null && wifiName.isNotEmpty;
-
-                          return SettingsTile(
-                            icon: const Icon(Icons.wifi),
-                            title: 'Wi-Fi',
-                            subtitle: isConnected ? wifiName : 'Not connected',
-                            trailing: Text(
-                              isConnected ? 'Connected' : 'Disconnected',
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: isConnected
-                                        ? Colors.green
-                                        : Colors.grey,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                            onTap: () {
-                              AppSettings.openAppSettings(
-                                type: AppSettingsType.wifi,
+                          final connectivity =
+                              snapshot.data ??
+                              const _ConnectivityState(
+                                locationIssue: LocationAccessIssue.permissionDenied,
                               );
-                            },
+                          final locationIssue = connectivity.locationIssue;
+                          final locationReady =
+                              locationIssue == LocationAccessIssue.none;
+                          final wifiName = connectivity.wifiName;
+                          final isConnected =
+                              locationReady &&
+                              wifiName != null &&
+                              wifiName.isNotEmpty;
+
+                          final locationSubtitle = switch (locationIssue) {
+                            LocationAccessIssue.none =>
+                              'Enabled and ready',
+                            LocationAccessIssue.serviceDisabled =>
+                              'Phone location is turned off',
+                            LocationAccessIssue.permissionPermanentlyDenied =>
+                              'Permission is disabled for this app',
+                            LocationAccessIssue.permissionDenied =>
+                              'Permission is required for Wi-Fi detection',
+                          };
+
+                          final locationStatusText = switch (locationIssue) {
+                            LocationAccessIssue.none => 'On',
+                            _ => 'Off',
+                          };
+
+                          return Column(
+                            children: [
+                              SettingsTile(
+                                icon: const Icon(Icons.location_on_outlined),
+                                title: 'Location',
+                                subtitle: locationSubtitle,
+                                trailing: Text(
+                                  locationStatusText,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: locationReady
+                                            ? Colors.green
+                                            : Colors.orange,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                                onTap: () async {
+                                  await _showLocationResolutionDialog(
+                                    locationIssue,
+                                  );
+                                },
+                              ),
+                              SettingsTile(
+                                icon: const Icon(Icons.wifi),
+                                title: 'Wi-Fi',
+                                subtitle: locationReady
+                                    ? (isConnected
+                                          ? wifiName
+                                          : 'Not connected')
+                                    : 'Turn on location to detect Wi-Fi name',
+                                trailing: Text(
+                                  isConnected ? 'Connected' : 'Disconnected',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: isConnected
+                                            ? Colors.green
+                                            : Colors.grey,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                                onTap: () async {
+                                  if (!locationReady) {
+                                    await _showLocationResolutionDialog(
+                                      locationIssue,
+                                    );
+                                    return;
+                                  }
+
+                                  await AppSettings.openAppSettings(
+                                    type: AppSettingsType.wifi,
+                                  );
+                                  await _refreshConnectivityState();
+                                },
+                              ),
+                            ],
                           );
                         },
                       ),
@@ -579,4 +700,11 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
+}
+
+class _ConnectivityState {
+  const _ConnectivityState({required this.locationIssue, this.wifiName});
+
+  final LocationAccessIssue locationIssue;
+  final String? wifiName;
 }

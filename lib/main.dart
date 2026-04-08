@@ -23,6 +23,8 @@ import 'state/notifications_store.dart';
 import 'state/user_store.dart';
 import 'package:aerosaur/services/repositories/user_repository.dart';
 
+Widget _withLocationGate(Widget child) => LocationGate(child: child);
+
 Route<T> _buildHorizontalSlideRoute<T>({
   required RouteSettings settings,
   required Widget child,
@@ -169,36 +171,38 @@ class MyAppState extends State<MyApp> {
           AppRoutes.entryGate: (_) => const EntryGate(),
           AppRoutes.signup: (_) => const SignUpPage(),
           AppRoutes.login: (_) => const LoginPage(),
-          AppRoutes.home: (_) => const LocationGate(child: HomePage()),
+          AppRoutes.home: (_) => _withLocationGate(const HomePage()),
           AppRoutes.qrScanner: (_) =>
-              const LocationGate(child: QrScannerScreen()),
+              _withLocationGate(const QrScannerScreen()),
         },
         onGenerateRoute: (settings) {
           switch (settings.name) {
             case AppRoutes.premium:
               return _buildVerticalSlideRoute(
                 settings: settings,
-                child: const SubscriptionPage(),
+                child: _withLocationGate(const SubscriptionPage()),
               );
             case AppRoutes.settings:
               return _buildHorizontalSlideRoute(
                 settings: settings,
-                child: const SettingsPage(),
+                child: _withLocationGate(const SettingsPage()),
               );
             case AppRoutes.notifications:
               return _buildHorizontalSlideRoute(
                 settings: settings,
-                child: const NotificationsPage(),
+                child: _withLocationGate(const NotificationsPage()),
               );
             case AppRoutes.deviceManagement:
               final args = settings.arguments as DeviceManagementArgs;
 
               return _buildHorizontalSlideRoute(
                 settings: settings,
-                child: DeviceManagementPage(
-                  uid: args.uid,
-                  devices: args.devices,
-                  onDevicesChanged: args.onDevicesChanged,
+                child: _withLocationGate(
+                  DeviceManagementPage(
+                    uid: args.uid,
+                    devices: args.devices,
+                    onDevicesChanged: args.onDevicesChanged,
+                  ),
                 ),
               );
             default:

@@ -8,6 +8,7 @@ import '../../services/api/api_client.dart';
 import '../../services/api/devices_api.dart';
 import '../../services/api/readings_api.dart';
 import '../../services/device/device_setup_service.dart';
+import '../../services/location/location_access_service.dart';
 
 class DeviceDetailsPage extends StatefulWidget {
   const DeviceDetailsPage({super.key, required this.device});
@@ -384,6 +385,26 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
     final wifiName = await _setupService.getSuggestedWifiName();
     if (wifiName == null || wifiName.isEmpty) {
       if (!mounted) return;
+      final locationIssue = await LocationAccessService.getIssue();
+      if (locationIssue != LocationAccessIssue.none) {
+        final shouldOpen = await showAppConfirmationDialog(
+          context,
+          title: locationIssue == LocationAccessIssue.serviceDisabled
+              ? 'Turn On Location'
+              : 'Location Permission Needed',
+          message: locationIssue == LocationAccessIssue.serviceDisabled
+              ? 'Your phone location is turned off. Enable it so Aerosaur can detect your Wi-Fi and continue provisioning.'
+              : 'Allow location access so Aerosaur can detect your Wi-Fi and continue provisioning.',
+          cancelLabel: 'Close',
+          confirmLabel: locationIssue == LocationAccessIssue.serviceDisabled
+              ? 'Open Location'
+              : 'Open Settings',
+        );
+        if (shouldOpen) {
+          await LocationAccessService.openResolution(locationIssue);
+        }
+        return;
+      }
       await showAppMessageDialog(
         context,
         title: 'Wi-Fi Required',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../components/offline_status_banner.dart';
 import '/../../models/device.dart';
 import '/../components/aqi_card.dart';
 import '../home/dialogs/info_dialog.dart';
@@ -164,6 +165,7 @@ class Monitoring extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            OfflineStatusBanner(device: device),
             AqiCard(
               background: theme.colorScheme.primary,
               titleStyle: titleMedium.copyWith(

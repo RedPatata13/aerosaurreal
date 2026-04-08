@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../components/offline_status_banner.dart';
 import '../../components/tutorial_showcase.dart';
 import '/../components/aqi_card.dart';
 import '/../models/device.dart';
@@ -68,6 +69,7 @@ class Dashboard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            OfflineStatusBanner(device: selectedDevice),
             _wrapShowcase(
               showcaseKey: airQualityKey,
               title: 'Air Quality Summary',
