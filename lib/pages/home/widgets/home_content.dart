@@ -6,9 +6,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 import '../../../components/navbar.dart';
+import '../../../components/tutorial_showcase.dart';
 import '../../../routes/routes.dart';
+import '../../../services/tutorial/app_tutorial_service.dart';
 import '../../dashboard/dashboard.dart';
 import '../../device_management/device_management_args.dart';
 import '../../insights/insights.dart';
@@ -33,6 +36,19 @@ class HomeContent extends StatefulWidget {
 class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
   late final PageController _pageController;
   late final DeviceHubController _controller;
+  final AppTutorialService _tutorialService = AppTutorialService();
+  final GlobalKey _tutorialHelpKey = GlobalKey();
+  final GlobalKey _registerDeviceKey = GlobalKey();
+  final GlobalKey _emptyStateRegisterKey = GlobalKey();
+  final GlobalKey _notificationsKey = GlobalKey();
+  final GlobalKey _settingsKey = GlobalKey();
+  final GlobalKey _aqiKey = GlobalKey();
+  final GlobalKey _devicesKey = GlobalKey();
+  final GlobalKey _smartModeKey = GlobalKey();
+  final GlobalKey _fanSpeedKey = GlobalKey();
+  final GlobalKey _bottomNavKey = GlobalKey();
+  bool _tutorialCheckStarted = false;
+  bool _tutorialStartedThisSession = false;
   bool _premiumLoading = true;
   bool _isPremium = false;
 
@@ -114,6 +130,57 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
       if (ok == true) {
         await _controller.loadDevices();
       }
+    });
+  }
+
+  List<GlobalKey> _tutorialSteps({required bool hasDevices}) {
+    return [
+      _tutorialHelpKey,
+      _registerDeviceKey,
+      _notificationsKey,
+      _settingsKey,
+      if (hasDevices) ...[_aqiKey, _devicesKey, _smartModeKey, _fanSpeedKey],
+      if (!hasDevices) _emptyStateRegisterKey,
+      _bottomNavKey,
+    ];
+  }
+
+  Future<void> _startTutorial({
+    required bool hasDevices,
+    bool markAsSeen = true,
+  }) async {
+    if (_controller.selectedPageIndex != 0) {
+      await _pageController.animateToPage(
+        0,
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+      );
+    }
+
+    if (!mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ShowcaseView.get().startShowCase(_tutorialSteps(hasDevices: hasDevices));
+    });
+
+    _tutorialStartedThisSession = true;
+    if (markAsSeen) {
+      await _tutorialService.markHomeTourSeen();
+    }
+  }
+
+  void _queueAutoTutorial({required bool hasDevices}) {
+    if (_tutorialCheckStarted || _tutorialStartedThisSession) {
+      return;
+    }
+
+    _tutorialCheckStarted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final hasSeenTutorial = await _tutorialService.hasSeenHomeTour();
+      if (!mounted || hasSeenTutorial) return;
+      await _startTutorial(hasDevices: hasDevices, markAsSeen: true);
     });
   }
 
@@ -200,135 +267,177 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
         final hasDevices = devicesForUi.isNotEmpty;
         final selectedDevice = _controller.selectedDevice;
 
-        return Scaffold(
-          extendBody: true,
-          body: SafeArea(
-            child: Column(
-              children: [
-                HomeHeader(
-                  username: username,
-                  iconColor: isDark ? Colors.white : const Color(0xFF111827),
-                  onRegisterDevice: () {
-                    if (!hasDevices) {
-                      _showRegisterDeviceDialog();
-                      return;
-                    }
+        return ShowCaseWidget(
+          key: const ValueKey('home-tour-bubble-only-v2'),
+          onFinish: () {
+            _tutorialService.markHomeTourSeen();
+          },
+          onDismiss: (_) {
+            _tutorialService.markHomeTourSeen();
+          },
+          disableBarrierInteraction: false,
+          enableAutoScroll: true,
+          blurValue: 1,
+          builder: (_) {
+            _queueAutoTutorial(hasDevices: hasDevices);
 
-                    Navigator.of(context)
-                        .pushNamed(
-                          AppRoutes.deviceManagement,
-                          arguments: DeviceManagementArgs(
-                            uid: uid,
-                            devices: devicesForUi,
-                            onDevicesChanged: _controller.applyDeviceList,
+            return Scaffold(
+              extendBody: true,
+              body: SafeArea(
+                child: Column(
+                  children: [
+                    HomeHeader(
+                      username: username,
+                      iconColor: isDark
+                          ? Colors.white
+                          : const Color(0xFF111827),
+                      onRegisterDevice: () {
+                        if (!hasDevices) {
+                          _showRegisterDeviceDialog();
+                          return;
+                        }
+
+                        Navigator.of(context)
+                            .pushNamed(
+                              AppRoutes.deviceManagement,
+                              arguments: DeviceManagementArgs(
+                                uid: uid,
+                                devices: devicesForUi,
+                                onDevicesChanged: _controller.applyDeviceList,
+                              ),
+                            )
+                            .then((_) async {
+                              await _controller.loadDevices(silent: true);
+                            });
+                      },
+                      onShowTutorial: () {
+                        _startTutorial(hasDevices: hasDevices);
+                      },
+                      tutorialButtonKey: _tutorialHelpKey,
+                      addButtonKey: _registerDeviceKey,
+                      notificationsButtonKey: _notificationsKey,
+                      settingsButtonKey: _settingsKey,
+                    ),
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        physics: const BouncingScrollPhysics(),
+                        onPageChanged: (index) async {
+                          await _controller.selectPage(index);
+                        },
+                        children: [
+                          if (selectedDevice != null)
+                            Dashboard(
+                              devices: devicesForUi,
+                              selectedDeviceIndex:
+                                  _controller.selectedDeviceIndex,
+                              onTogglePower: (deviceId, isOn) async {
+                                final error = await _controller
+                                    .setPowerForDevice(deviceId, isOn);
+                                if (error != null && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(error)),
+                                  );
+                                }
+                              },
+                              onControlChanged: (deviceId, patch) async {
+                                final error = await _controller
+                                    .updateControlForDevice(deviceId, patch);
+                                if (error != null && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(error)),
+                                  );
+                                }
+                              },
+                              onSelectDevice: (index) async {
+                                await _controller.selectDevice(index);
+                              },
+                              onUpdateDevice: _controller.updateDevice,
+                              onRefresh: _controller.refreshCurrentTab,
+                              airQualityKey: _aqiKey,
+                              devicesKey: _devicesKey,
+                              smartModeKey: _smartModeKey,
+                              fanSpeedKey: _fanSpeedKey,
+                            )
+                          else
+                            NoDeviceContent(
+                              onRegisterDevice: _showRegisterDeviceDialog,
+                              onLogout: _handleLogoutAndRedirect,
+                              registerButtonKey: _emptyStateRegisterKey,
+                            ),
+                          _PremiumLockedPage(
+                            locked: !_isPremium,
+                            title: 'Premium Required',
+                            message:
+                                'Monitoring is available for premium subscribers only.',
+                            onUnlock: () {
+                              Navigator.of(
+                                context,
+                              ).pushNamed(AppRoutes.premium);
+                            },
+                            child: selectedDevice != null
+                                ? Monitoring(
+                                    device: selectedDevice,
+                                    onRefresh: _controller.refreshCurrentTab,
+                                  )
+                                : _NoDeviceFeatureContent(
+                                    title: 'No device registered yet.',
+                                    description:
+                                        'Register a device to start viewing live monitoring data.',
+                                    onRegisterDevice: _showRegisterDeviceDialog,
+                                  ),
                           ),
-                        )
-                        .then((_) async {
-                          await _controller.loadDevices(silent: true);
-                        });
+                          _PremiumLockedPage(
+                            locked: !_isPremium,
+                            title: 'Premium Required',
+                            message:
+                                'Insights is available for premium subscribers only.',
+                            onUnlock: () {
+                              Navigator.of(
+                                context,
+                              ).pushNamed(AppRoutes.premium);
+                            },
+                            child: selectedDevice != null
+                                ? Insights(
+                                    device: selectedDevice,
+                                    onRefresh: _controller.refreshCurrentTab,
+                                  )
+                                : _NoDeviceFeatureContent(
+                                    title: 'No device registered yet.',
+                                    description:
+                                        'Register a device to unlock air quality insights and trends.',
+                                    onRegisterDevice: _showRegisterDeviceDialog,
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              bottomNavigationBar: wrapTutorialShowcase(
+                child: CustomBottomNav(
+                  currentIndex: _controller.selectedPageIndex,
+                  onTap: (value) {
+                    if (value == _controller.selectedPageIndex) return;
+
+                    _pageController.animateToPage(
+                      value,
+                      duration: const Duration(milliseconds: 240),
+                      curve: Curves.easeOutCubic,
+                    );
                   },
                 ),
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const BouncingScrollPhysics(),
-                    onPageChanged: (index) async {
-                      await _controller.selectPage(index);
-                    },
-                    children: [
-                      if (selectedDevice != null)
-                        Dashboard(
-                          devices: devicesForUi,
-                          selectedDeviceIndex: _controller.selectedDeviceIndex,
-                          onTogglePower: (deviceId, isOn) async {
-                            final error = await _controller.setPowerForDevice(
-                              deviceId,
-                              isOn,
-                            );
-                            if (error != null && context.mounted) {
-                              ScaffoldMessenger.of(
-                                context,
-                              ).showSnackBar(SnackBar(content: Text(error)));
-                            }
-                          },
-                          onControlChanged: (deviceId, patch) async {
-                            final error = await _controller
-                                .updateControlForDevice(deviceId, patch);
-                            if (error != null && context.mounted) {
-                              ScaffoldMessenger.of(
-                                context,
-                              ).showSnackBar(SnackBar(content: Text(error)));
-                            }
-                          },
-                          onSelectDevice: (index) async {
-                            await _controller.selectDevice(index);
-                          },
-                          onUpdateDevice: _controller.updateDevice,
-                          onRefresh: _controller.refreshCurrentTab,
-                        )
-                      else
-                        NoDeviceContent(
-                          onRegisterDevice: _showRegisterDeviceDialog,
-                          onLogout: _handleLogoutAndRedirect,
-                        ),
-                      _PremiumLockedPage(
-                        locked: !_isPremium,
-                        title: 'Premium Required',
-                        message:
-                            'Monitoring is available for premium subscribers only.',
-                        onUnlock: () {
-                          Navigator.of(context).pushNamed(AppRoutes.premium);
-                        },
-                        child: selectedDevice != null
-                            ? Monitoring(
-                                device: selectedDevice,
-                                onRefresh: _controller.refreshCurrentTab,
-                              )
-                            : _NoDeviceFeatureContent(
-                                title: 'No device registered yet.',
-                                description:
-                                    'Register a device to start viewing live monitoring data.',
-                                onRegisterDevice: _showRegisterDeviceDialog,
-                              ),
-                      ),
-                      _PremiumLockedPage(
-                        locked: !_isPremium,
-                        title: 'Premium Required',
-                        message:
-                            'Insights is available for premium subscribers only.',
-                        onUnlock: () {
-                          Navigator.of(context).pushNamed(AppRoutes.premium);
-                        },
-                        child: selectedDevice != null
-                            ? Insights(
-                                device: selectedDevice,
-                                onRefresh: _controller.refreshCurrentTab,
-                              )
-                            : _NoDeviceFeatureContent(
-                                title: 'No device registered yet.',
-                                description:
-                                    'Register a device to unlock air quality insights and trends.',
-                                onRegisterDevice: _showRegisterDeviceDialog,
-                              ),
-                      ),
-                    ],
-                  ),
+                showcaseKey: _bottomNavKey,
+                title: 'Navigate between pages',
+                description:
+                    'Use these tabs to move between Dashboard, Monitoring, and Insights. Monitoring shows live readings, while Insights helps you review trends.',
+                shapeBorder: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(24)),
                 ),
-              ],
-            ),
-          ),
-          bottomNavigationBar: CustomBottomNav(
-            currentIndex: _controller.selectedPageIndex,
-            onTap: (value) {
-              if (value == _controller.selectedPageIndex) return;
-
-              _pageController.animateToPage(
-                value,
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeOutCubic,
-              );
-            },
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -504,4 +613,3 @@ class _NoDeviceFeatureContent extends StatelessWidget {
     );
   }
 }
-

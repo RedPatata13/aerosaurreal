@@ -1,18 +1,41 @@
 import 'package:flutter/material.dart';
+import '../../../components/tutorial_showcase.dart';
 
 class NoDeviceContent extends StatelessWidget {
   final VoidCallback onRegisterDevice;
   final VoidCallback onLogout;
+  final GlobalKey? registerButtonKey;
 
   const NoDeviceContent({
     super.key,
     required this.onRegisterDevice,
     required this.onLogout,
+    this.registerButtonKey,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final registerButton = SizedBox(
+      height: 40,
+      child: ElevatedButton.icon(
+        onPressed: onRegisterDevice,
+        icon: const Icon(Icons.link, size: 18),
+        label: const Text('Register new device'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          textStyle: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            fontSize: (theme.textTheme.bodyMedium?.fontSize ?? 14) - 1,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      ),
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -50,7 +73,7 @@ class NoDeviceContent extends StatelessWidget {
                     "It appears you don't have any devices registered. Register your device now!",
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       height: 1.5,
                     ),
                   ),
@@ -68,28 +91,15 @@ class NoDeviceContent extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Flexible(
-                    child: SizedBox(
-                      height: 40,
-                      child: ElevatedButton.icon(
-                        onPressed: onRegisterDevice,
-                        icon: const Icon(Icons.link, size: 18),
-                        label: const Text('Register new device'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: theme.colorScheme.primary,
-                          foregroundColor: theme.colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          textStyle: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize:
-                                (theme.textTheme.bodyMedium?.fontSize ?? 14) -
-                                1,
+                    child: registerButtonKey == null
+                        ? registerButton
+                        : wrapTutorialShowcase(
+                            child: registerButton,
+                            showcaseKey: registerButtonKey,
+                            title: 'Start by adding a device',
+                            description:
+                                'Register your purifier here so the app can show live air quality, controls, alerts, and analytics.',
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                   const SizedBox(width: 10),
                   SizedBox(
