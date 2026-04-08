@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../components/tutorial_showcase.dart';
 import '../../../platform/system_settings.dart';
 import '../../../state/notifications_store.dart';
 import 'top_icon_button.dart';
@@ -9,13 +10,39 @@ class HomeHeader extends StatelessWidget {
   final String username;
   final Color iconColor;
   final VoidCallback onRegisterDevice;
+  final VoidCallback? onShowTutorial;
+  final GlobalKey? tutorialButtonKey;
+  final GlobalKey? addButtonKey;
+  final GlobalKey? notificationsButtonKey;
+  final GlobalKey? settingsButtonKey;
 
   const HomeHeader({
     super.key,
     required this.username,
     required this.iconColor,
     required this.onRegisterDevice,
+    this.onShowTutorial,
+    this.tutorialButtonKey,
+    this.addButtonKey,
+    this.notificationsButtonKey,
+    this.settingsButtonKey,
   });
+
+  Widget _wrapShowcase({
+    required Widget child,
+    required GlobalKey? showcaseKey,
+    required String title,
+    required String description,
+    ShapeBorder? shapeBorder,
+  }) {
+    return wrapTutorialShowcase(
+      child: child,
+      showcaseKey: showcaseKey,
+      title: title,
+      description: description,
+      shapeBorder: shapeBorder,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,34 +127,72 @@ class HomeHeader extends StatelessWidget {
           ),
           const SizedBox(width: 4),
 
-          TopIconButton(
-            onPressed: onRegisterDevice,
-            icon: Icons.add,
-            tooltip: 'Register device',
-            color: iconColor,
-          ),
-          const SizedBox(width: 4),
+          if (onShowTutorial != null) ...[
+            _wrapShowcase(
+              showcaseKey: tutorialButtonKey,
+              title: 'Need a quick tour?',
+              description:
+                  'Tap this help button anytime to replay the walkthrough and learn what each part of the app does.',
+              shapeBorder: const CircleBorder(),
+              child: TopIconButton(
+                onPressed: onShowTutorial!,
+                icon: Icons.help_outline_rounded,
+                tooltip: 'Show tutorial',
+                color: iconColor,
+              ),
+            ),
+            const SizedBox(width: 4),
+          ],
 
-          TopIconButton(
-            onPressed: () {
-              Navigator.of(context).pushNamed(AppRoutes.notifications);
-            },
-            icon: Icons.notifications_none,
-            tooltip: 'Notifications',
-            color: iconColor,
-            showIndicator: context.select<NotificationsStore, bool>(
-              (store) => store.hasUnread,
+          _wrapShowcase(
+            showcaseKey: addButtonKey,
+            title: 'Register a device',
+            description:
+                'Use this button to add a purifier to your account or open device management after setup.',
+            shapeBorder: const CircleBorder(),
+            child: TopIconButton(
+              onPressed: onRegisterDevice,
+              icon: Icons.add,
+              tooltip: 'Register device',
+              color: iconColor,
             ),
           ),
           const SizedBox(width: 4),
 
-          TopIconButton(
-            onPressed: () {
-              Navigator.of(context).pushNamed(AppRoutes.settings);
-            },
-            icon: Icons.settings_outlined,
-            tooltip: 'Settings',
-            color: iconColor,
+          _wrapShowcase(
+            showcaseKey: notificationsButtonKey,
+            title: 'Notifications',
+            description:
+                'Open alerts, system messages, and device updates. A red dot appears here when something new arrives.',
+            shapeBorder: const CircleBorder(),
+            child: TopIconButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed(AppRoutes.notifications);
+              },
+              icon: Icons.notifications_none,
+              tooltip: 'Notifications',
+              color: iconColor,
+              showIndicator: context.select<NotificationsStore, bool>(
+                (store) => store.hasUnread,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+
+          _wrapShowcase(
+            showcaseKey: settingsButtonKey,
+            title: 'Settings',
+            description:
+                'Manage your account, password, connected services, app appearance, and subscription details here.',
+            shapeBorder: const CircleBorder(),
+            child: TopIconButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed(AppRoutes.settings);
+              },
+              icon: Icons.settings_outlined,
+              tooltip: 'Settings',
+              color: iconColor,
+            ),
           ),
         ],
       ),

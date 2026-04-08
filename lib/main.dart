@@ -23,6 +23,64 @@ import 'state/notifications_store.dart';
 import 'state/user_store.dart';
 import 'package:aerosaur/services/repositories/user_repository.dart';
 
+Route<T> _buildHorizontalSlideRoute<T>({
+  required RouteSettings settings,
+  required Widget child,
+}) {
+  return PageRouteBuilder<T>(
+    settings: settings,
+    pageBuilder: (_, __, ___) => child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      const curve = Curves.easeOutCubic;
+
+      final offsetTween = Tween<Offset>(
+        begin: const Offset(1, 0),
+        end: Offset.zero,
+      ).chain(CurveTween(curve: curve));
+
+      return SlideTransition(
+        position: animation.drive(offsetTween),
+        child: child,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 240),
+  );
+}
+
+Route<T> _buildVerticalSlideRoute<T>({
+  required RouteSettings settings,
+  required Widget child,
+}) {
+  return PageRouteBuilder<T>(
+    settings: settings,
+    pageBuilder: (_, __, ___) => child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      const curve = Curves.easeOutCubic;
+
+      final offsetTween = Tween<Offset>(
+        begin: const Offset(0, 1),
+        end: Offset.zero,
+      ).chain(CurveTween(curve: curve));
+
+      final fadeTween = Tween<double>(
+        begin: 0.96,
+        end: 1,
+      ).chain(CurveTween(curve: curve));
+
+      return SlideTransition(
+        position: animation.drive(offsetTween),
+        child: FadeTransition(
+          opacity: animation.drive(fadeTween),
+          child: child,
+        ),
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -111,20 +169,33 @@ class MyAppState extends State<MyApp> {
           AppRoutes.entryGate: (_) => const EntryGate(),
           AppRoutes.signup: (_) => const SignUpPage(),
           AppRoutes.login: (_) => const LoginPage(),
-          AppRoutes.premium: (_) => const SubscriptionPage(),
           AppRoutes.home: (_) => const LocationGate(child: HomePage()),
-          AppRoutes.settings: (_) => const SettingsPage(),
-          AppRoutes.notifications: (_) => const NotificationsPage(),
           AppRoutes.qrScanner: (_) =>
               const LocationGate(child: QrScannerScreen()),
         },
         onGenerateRoute: (settings) {
           switch (settings.name) {
+            case AppRoutes.premium:
+              return _buildVerticalSlideRoute(
+                settings: settings,
+                child: const SubscriptionPage(),
+              );
+            case AppRoutes.settings:
+              return _buildHorizontalSlideRoute(
+                settings: settings,
+                child: const SettingsPage(),
+              );
+            case AppRoutes.notifications:
+              return _buildHorizontalSlideRoute(
+                settings: settings,
+                child: const NotificationsPage(),
+              );
             case AppRoutes.deviceManagement:
               final args = settings.arguments as DeviceManagementArgs;
 
-              return MaterialPageRoute(
-                builder: (_) => DeviceManagementPage(
+              return _buildHorizontalSlideRoute(
+                settings: settings,
+                child: DeviceManagementPage(
                   uid: args.uid,
                   devices: args.devices,
                   onDevicesChanged: args.onDevicesChanged,
@@ -138,4 +209,3 @@ class MyAppState extends State<MyApp> {
     );
   }
 }
-
