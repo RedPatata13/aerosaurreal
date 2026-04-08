@@ -1,12 +1,13 @@
-import 'package:aerosaur_2nd_sem/routes/routes.dart';
-import 'package:aerosaur_2nd_sem/services/repositories/premium_repository.dart';
-import 'package:aerosaur_2nd_sem/state/user_store.dart';
+import 'package:aerosaur/routes/routes.dart';
+import 'package:aerosaur/services/repositories/premium_repository.dart';
+import 'package:aerosaur/state/user_store.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../components/app_dialogs.dart';
 import '../../services/api/api_client.dart';
 import '../../utils/snackbar_utils.dart';
 
@@ -291,52 +292,11 @@ class _SubscriptionPageState extends State<SubscriptionPage>
   }
 
   Future<void> _showSubscriptionSuccessDialog() async {
-    final theme = Theme.of(context);
-
-    return showDialog<void>(
-      context: context,
-      builder: (context) => Dialog(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Container(
-            width: 340,
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.dividerColor),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Subscription successful.\nPremium is now active.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      minimumSize: const Size.fromHeight(44),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text('Continue'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    return showAppMessageDialog(
+      context,
+      title: 'Subscription successful.\nPremium is now active.',
+      message: 'Your account now has access to premium features.',
+      actionLabel: 'Continue',
     );
   }
 
@@ -361,82 +321,15 @@ class _SubscriptionPageState extends State<SubscriptionPage>
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || _cancellingSubscription) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        final theme = Theme.of(context);
-
-        return Dialog(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: Container(
-              width: 340,
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-              decoration: BoxDecoration(
-                color: theme.cardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: theme.dividerColor),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Cancel auto-renew for this\nsubscription?',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Your current payment is not refundable, and premium access will continue until the end of the paid period.',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
-                          style: TextButton.styleFrom(
-                            foregroundColor: theme.colorScheme.onSurface,
-                            textStyle: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          child: const Text('Back'),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.of(context).pop(true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFA31618),
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size.fromHeight(44),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: const Text('Confirm'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+    final confirmed = await showAppConfirmationDialog(
+      context,
+      title: 'Cancel auto-renew for this\nsubscription?',
+      message:
+          'Your current payment is not refundable, and premium access will continue until the end of the paid period.',
+      confirmColor: const Color(0xFFA31618),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     setState(() => _cancellingSubscription = true);
 
@@ -599,8 +492,9 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                                       (_premiumStatus?['premiumPlan'] ?? '')
                                           .toString(),
                                     ),
-                                    provider: (_premiumStatus?['provider'] ?? '')
-                                        .toString(),
+                                    provider:
+                                        (_premiumStatus?['provider'] ?? '')
+                                            .toString(),
                                     expiresAt:
                                         (_premiumStatus?['expiresAt'] ?? '')
                                             .toString(),
@@ -644,7 +538,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                                                 Expanded(
                                                   child: Column(
                                                     crossAxisAlignment:
-                                                        CrossAxisAlignment.start,
+                                                        CrossAxisAlignment
+                                                            .start,
                                                     children: [
                                                       Text(
                                                         'Every 3 Months',
@@ -656,9 +551,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                                                               fontWeight:
                                                                   FontWeight
                                                                       .w800,
-                                                              color:
-                                                                  colorScheme
-                                                                      .onSurface,
+                                                              color: colorScheme
+                                                                  .onSurface,
                                                             ),
                                                       ),
                                                       const SizedBox(height: 4),
@@ -681,8 +575,7 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                                                   ),
                                                 ),
                                                 SizedBox(
-                                                  width:
-                                                      useCompactLayout
+                                                  width: useCompactLayout
                                                       ? 12
                                                       : 20,
                                                 ),
@@ -692,8 +585,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                                                         Alignment.topRight,
                                                     child: FittedBox(
                                                       fit: BoxFit.scaleDown,
-                                                      alignment: Alignment
-                                                          .centerRight,
+                                                      alignment:
+                                                          Alignment.centerRight,
                                                       child: Text(
                                                         _planPrice,
                                                         maxLines: 1,
@@ -705,9 +598,8 @@ class _SubscriptionPageState extends State<SubscriptionPage>
                                                               fontWeight:
                                                                   FontWeight
                                                                       .w900,
-                                                              color:
-                                                                  colorScheme
-                                                                      .onSurface,
+                                                              color: colorScheme
+                                                                  .onSurface,
                                                             ),
                                                       ),
                                                     ),
@@ -1159,3 +1051,4 @@ class _FeatureTile extends StatelessWidget {
     );
   }
 }
+

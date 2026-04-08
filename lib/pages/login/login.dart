@@ -1,12 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../components/app_dialogs.dart';
 import '../../services/auth/auth_service.dart';
 import '../../services/auth/google_auth_service.dart';
 import '../../utils/snackbar_utils.dart';
 import '../../utils/token_utils.dart';
-import 'package:aerosaur_2nd_sem/state/user_store.dart';
-import '../../routes/routes.dart';
+import 'package:aerosaur/state/user_store.dart';
+import '../../services/api/api_client.dart';
+import '../../services/navigation/startup_route_resolver.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -47,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
 
       await context.read<UserStore>().loadOrCreate();
 
-      _navigateToApp();
+      await _navigateToApp(user.uid);
     } catch (e, st) {
       debugPrint('LOGIN ERROR: $e');
       debugPrintStack(stackTrace: st);
@@ -58,7 +60,11 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _forgotPassword() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      SnackbarUtils.show(context, 'Enter your email first', Colors.orange);
+      await showAppMessageDialog(
+        context,
+        title: 'Email Required',
+        message: 'Enter your email first before requesting a reset link.',
+      );
       return;
     }
 
@@ -99,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
 
       await context.read<UserStore>().loadOrCreate();
 
-      _navigateToApp();
+      await _navigateToApp(user.uid);
     } catch (e, st) {
       debugPrint('GOOGLE LOGIN ERROR: $e');
       debugPrintStack(stackTrace: st);
@@ -107,8 +113,12 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  void _navigateToApp() {
-    Navigator.pushReplacementNamed(context, AppRoutes.premium);
+  Future<void> _navigateToApp(String userId) async {
+    final route = await StartupRouteResolver(
+      context.read<ApiClient>(),
+    ).resolve(userId);
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(context, route);
   }
 
   @override
@@ -270,3 +280,4 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+

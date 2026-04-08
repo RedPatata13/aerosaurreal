@@ -1,8 +1,9 @@
-import 'package:aerosaur_2nd_sem/routes/routes.dart';
+import 'package:aerosaur/routes/routes.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../components/app_dialogs.dart';
 import '../../components/wifi_password_dialog.dart';
 import '../../models/device.dart';
 import '../../services/api/api_client.dart';
@@ -102,9 +103,11 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     final name = _deviceNameController.text.trim();
 
     if (rawInput.isEmpty || _saving) {
-      ScaffoldMessenger.of(
+      await showAppMessageDialog(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Device ID is required.')));
+        title: 'Device ID Required',
+        message: 'Enter or scan a device ID before registering.',
+      );
       return;
     }
 
@@ -134,9 +137,11 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
       if (!mounted) return;
       setState(() => _saving = false);
 
-      ScaffoldMessenger.of(
+      await showAppMessageDialog(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+        title: 'Invalid Device ID',
+        message: e.message,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -155,10 +160,10 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     final wifiName = await _setupService.getSuggestedWifiName();
     if (wifiName == null || wifiName.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Connect your phone to Wi-Fi first.'),
-        ),
+      await showAppMessageDialog(
+        context,
+        title: 'Wi-Fi Required',
+        message: 'Connect your phone to Wi-Fi first.',
       );
       return;
     }
@@ -178,10 +183,10 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
 
     if (pass.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      await showAppMessageDialog(
         context,
-      ).showSnackBar(
-        const SnackBar(content: Text('Wi-Fi password is required')),
+        title: 'Password Required',
+        message: 'Wi-Fi password is required.',
       );
       return;
     }
@@ -212,9 +217,7 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
 
   Future<void> _openDeviceDetails(Device device) async {
     await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => DeviceDetailsPage(device: device),
-      ),
+      MaterialPageRoute(builder: (_) => DeviceDetailsPage(device: device)),
     );
 
     if (mounted) {
@@ -256,9 +259,11 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
           );
         } on FormatException catch (e) {
           if (!mounted) return;
-          ScaffoldMessenger.of(
+          await showAppMessageDialog(
             context,
-          ).showSnackBar(SnackBar(content: Text(e.message)));
+            title: 'Invalid Device ID',
+            message: e.message,
+          );
         } catch (e) {
           if (!mounted) return;
           ScaffoldMessenger.of(
@@ -433,3 +438,4 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     );
   }
 }
+

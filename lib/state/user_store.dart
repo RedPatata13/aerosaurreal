@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:aerosaur_2nd_sem/services/api/api_exceptions.dart';
-import 'package:aerosaur_2nd_sem/services/repositories/user_repository.dart';
+import 'package:aerosaur/services/api/api_exceptions.dart';
+import 'package:aerosaur/services/repositories/user_repository.dart';
 
 class UserStore extends ChangeNotifier {
   UserStore(this._users);
@@ -86,3 +86,4 @@ class UserStore extends ChangeNotifier {
     notifyListeners();
   }
 }
+

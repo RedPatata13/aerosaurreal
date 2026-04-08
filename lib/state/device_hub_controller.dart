@@ -10,6 +10,7 @@ import '../services/api/readings_api.dart';
 
 class DeviceHubController extends ChangeNotifier {
   static const Duration _pollInterval = Duration(seconds: 8);
+  static const Duration _insightsPollInterval = Duration(seconds: 20);
   static const Duration _analyticsCacheTtl = Duration(minutes: 2);
 
   DeviceHubController({
@@ -239,29 +240,43 @@ class DeviceHubController extends ChangeNotifier {
     _analyticsLoading.add(device.id);
 
     try {
-      final data = await _analyticsApi.getAnalytics7d(device.id);
+      final responses = await Future.wait([
+        _analyticsApi.getAnalytics7d(device.id),
+        _analyticsApi.getAnalyticsToday(device.id),
+      ]);
+
+      final data = responses[0];
+      final todayData = responses[1];
+
       final summary =
           (data['summary'] as Map?)?.cast<String, dynamic>() ??
           const <String, dynamic>{};
+      final todaySummary =
+          (todayData['summary'] as Map?)?.cast<String, dynamic>() ??
+          const <String, dynamic>{};
       final trend = (data['aqiTrend'] as List?) ?? const [];
+      final todayTrend = (todayData['aqiTrend'] as List?) ?? const [];
       final usage = (data['usageTrend'] as List?) ?? const [];
+      final todayUsage = (todayData['usageTrend'] as List?) ?? const [];
 
-      final peakList = trend
-          .whereType<Map>()
-          .map<int>((e) => (e['peakAQI'] as num? ?? 0).toInt())
-          .toList(growable: false);
+      final peakList = _extractIntSeries(trend, 'peakAQI');
+      final avgList = _extractIntSeries(trend, 'avgAQI');
+      final usageList = _extractDoubleSeries(usage, 'hours');
 
-      final avgList = trend
-          .whereType<Map>()
-          .map<int>((e) => (e['avgAQI'] as num? ?? 0).toInt())
-          .toList(growable: false);
+      final mergedPeakList = _mergeLatestValue(
+        peakList,
+        _extractIntSeries(todayTrend, 'peakAQI'),
+      );
+      final mergedAvgList = _mergeLatestValue(
+        avgList,
+        _extractIntSeries(todayTrend, 'avgAQI'),
+      );
+      final mergedUsageList = _mergeLatestValue(
+        usageList,
+        _extractDoubleSeries(todayUsage, 'hours'),
+      );
 
-      final usageList = usage
-          .whereType<Map>()
-          .map<double>((e) => (e['hours'] as num? ?? 0).toDouble())
-          .toList(growable: false);
-
-      final totalUsageHours = usageList.fold<double>(
+      final totalUsageHours = mergedUsageList.fold<double>(
         0,
         (sum, value) => sum + value,
       );
@@ -269,19 +284,24 @@ class DeviceHubController extends ChangeNotifier {
       _replaceDevice(
         device.id,
         (existing) => existing.copyWith(
-          aqiPeak7d: peakList,
-          aqiAverage7d: avgList,
-          purifierUsageHours7d: usageList,
-          totalUsageHours7d:
-              (summary['totalUsageHours7d'] as num?)?.toDouble() ??
-              totalUsageHours,
-          dailyUsageHours: usageList.isNotEmpty ? usageList.last : 0,
+          aqiPeak7d: mergedPeakList,
+          aqiAverage7d: mergedAvgList,
+          purifierUsageHours7d: mergedUsageList,
+          totalUsageHours7d: totalUsageHours,
+          dailyUsageHours:
+              mergedUsageList.isNotEmpty ? mergedUsageList.last : 0,
           timeInGoodOrModeratePercentToday:
-              (summary['goodPercentage'] as num? ?? 0).toInt(),
-          directHoursToday: (summary['directHoursToday'] as num? ?? 0)
-              .toDouble(),
-          energySavedPercent: (summary['energySavedPercent'] as num? ?? 0)
-              .toInt(),
+              _toNum(todaySummary['goodPercentage'] ?? summary['goodPercentage'])
+                  .toInt(),
+          directHoursToday:
+              _toNum(
+                todaySummary['directHoursToday'] ?? summary['directHoursToday'],
+              ).toDouble(),
+          energySavedPercent:
+              _toNum(
+                todaySummary['energySavedPercent'] ??
+                    summary['energySavedPercent'],
+              ).toInt(),
         ),
       );
       _lastAnalyticsLoadedAtByDevice[device.id] = DateTime.now();
@@ -409,13 +429,26 @@ class DeviceHubController extends ChangeNotifier {
 
   void _restartPolling() {
     _pollTimer?.cancel();
-    if (_devices.isEmpty || !_isForeground || _selectedPageIndex == 2) {
+    if (_devices.isEmpty || !_isForeground) {
       return;
     }
 
-    _pollTimer = Timer.periodic(_pollInterval, (_) async {
+    final interval = _selectedPageIndex == 2
+        ? _insightsPollInterval
+        : _pollInterval;
+
+    _pollTimer = Timer.periodic(interval, (_) async {
       final device = selectedDevice;
       if (device == null) {
+        return;
+      }
+
+      if (_selectedPageIndex == 2) {
+        await Future.wait([
+          loadLatestForSelectedDevice(silent: true),
+          loadControlForDevice(device.id, silent: true),
+          loadAnalyticsForSelectedDevice(force: true),
+        ]);
         return;
       }
 
@@ -424,6 +457,37 @@ class DeviceHubController extends ChangeNotifier {
         loadControlForDevice(device.id, silent: true),
       ]);
     });
+  }
+
+  List<int> _extractIntSeries(List<dynamic> source, String key) {
+    return source
+        .whereType<Map>()
+        .map<int>((entry) => (entry[key] as num? ?? 0).toInt())
+        .toList(growable: false);
+  }
+
+  List<double> _extractDoubleSeries(List<dynamic> source, String key) {
+    return source
+        .whereType<Map>()
+        .map<double>((entry) => (entry[key] as num? ?? 0).toDouble())
+        .toList(growable: false);
+  }
+
+  List<T> _mergeLatestValue<T>(List<T> base, List<T> latest) {
+    if (base.isEmpty) {
+      return latest;
+    }
+    if (latest.isEmpty) {
+      return base;
+    }
+
+    final next = List<T>.from(base, growable: false);
+    next[next.length - 1] = latest.last;
+    return next;
+  }
+
+  num _toNum(dynamic value) {
+    return value is num ? value : 0;
   }
 
   void _pruneCaches() {

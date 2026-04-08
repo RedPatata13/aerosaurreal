@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'username_updated_page.dart';
-import 'package:aerosaur_2nd_sem/services/api/api_exceptions.dart';
-import 'package:aerosaur_2nd_sem/state/user_store.dart';
+import 'package:aerosaur/services/api/api_exceptions.dart';
+import 'package:aerosaur/state/user_store.dart';
 
 class UpdateUsernameDialog extends StatefulWidget {
   const UpdateUsernameDialog({super.key});
@@ -206,3 +206,4 @@ class _UpdateUsernameDialogState extends State<UpdateUsernameDialog> {
     );
   }
 }
+

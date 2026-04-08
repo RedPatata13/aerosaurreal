@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../components/app_dialogs.dart';
 import '../../components/wifi_password_dialog.dart';
 import '../../models/device.dart';
 import '../../services/api/api_client.dart';
@@ -113,16 +114,13 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
 
     try {
       final devices = await _devicesApi.listDevices();
-      final matching = devices.cast<Map<String, dynamic>?>().firstWhere(
-        (item) {
-          final device = item;
-          if (device == null) return false;
-          final id = (device['deviceId'] ?? device['DeviceId'] ?? device['id'])
-              ?.toString();
-          return id == _device.id;
-        },
-        orElse: () => null,
-      );
+      final matching = devices.cast<Map<String, dynamic>?>().firstWhere((item) {
+        final device = item;
+        if (device == null) return false;
+        final id = (device['deviceId'] ?? device['DeviceId'] ?? device['id'])
+            ?.toString();
+        return id == _device.id;
+      }, orElse: () => null);
 
       if (matching != null && mounted) {
         final parsed = Device.fromApi(matching);
@@ -147,7 +145,6 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
       } catch (_) {
         // Keep the last known device data if latest readings are unavailable.
       }
-
     } catch (e) {
       if (!silent && mounted) {
         ScaffoldMessenger.of(
@@ -343,77 +340,15 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
   Future<void> _removeDevice() async {
     if (_removing) return;
 
-    final theme = Theme.of(context);
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Container(
-            width: 340,
-            height: 210,
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.dividerColor),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Are you sure you want to\nremove this device?',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'This will remove it from your app and ask the device to clear its Wi-Fi credentials and return to offline fallback mode.',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodySmall,
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        style: TextButton.styleFrom(
-                          foregroundColor: theme.colorScheme.onSurface,
-                          textStyle: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        child: const Text('Back'),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(44),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text('Confirm'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+    final shouldDelete = await showAppConfirmationDialog(
+      context,
+      title: 'Are you sure you want to\nremove this device?',
+      message:
+          'This will remove it from your app and ask the device to clear its Wi-Fi credentials and return to offline fallback mode.',
+      confirmColor: Colors.red,
     );
 
-    if (shouldDelete != true) return;
+    if (!shouldDelete) return;
 
     setState(() => _removing = true);
 
@@ -421,9 +356,7 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
       await _devicesApi.unregisterDevice(_device.id);
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
             'Device removed. The device will clear Wi-Fi credentials when it receives the removal command.',
@@ -451,8 +384,10 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
     final wifiName = await _setupService.getSuggestedWifiName();
     if (wifiName == null || wifiName.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Connect your phone to Wi-Fi first.')),
+      await showAppMessageDialog(
+        context,
+        title: 'Wi-Fi Required',
+        message: 'Connect your phone to Wi-Fi first.',
       );
       return;
     }

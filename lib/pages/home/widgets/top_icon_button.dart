@@ -6,6 +6,7 @@ class TopIconButton extends StatelessWidget {
   final String tooltip;
   final Color color;
   final bool active;
+  final bool showIndicator;
 
   const TopIconButton({
     super.key,
@@ -14,6 +15,7 @@ class TopIconButton extends StatelessWidget {
     required this.tooltip,
     this.color = const Color(0xFF111827),
     this.active = false,
+    this.showIndicator = false,
   });
 
   @override
@@ -29,7 +31,29 @@ class TopIconButton extends StatelessWidget {
       visualDensity: const VisualDensity(horizontal: -4, vertical: -4),
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints.tightFor(width: 34, height: 34),
-      icon: Icon(icon, color: effectiveColor),
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Icon(icon, color: effectiveColor),
+          if (showIndicator)
+            Positioned(
+              top: -1,
+              right: -1,
+              child: Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE53935),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    width: 1.2,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

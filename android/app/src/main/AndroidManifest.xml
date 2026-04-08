@@ -14,7 +14,7 @@
         android:required="true" />
 
     <application
-        android:label="aerosaur_2nd_sem"
+        android:label="Aerosaur"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 

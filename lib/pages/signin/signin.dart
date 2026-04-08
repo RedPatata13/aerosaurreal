@@ -1,13 +1,14 @@
-import 'package:aerosaur_2nd_sem/services/api/api_exceptions.dart';
+import 'package:aerosaur/services/api/api_exceptions.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import '../../components/app_dialogs.dart';
 import '../../services/auth/auth_service.dart';
 import '../../services/auth/google_auth_service.dart';
 import '../../components/input_field.dart';
 import '../../components/password_input_field.dart';
-import 'package:aerosaur_2nd_sem/services/repositories/user_repository.dart';
-import 'package:aerosaur_2nd_sem/state/user_store.dart';
+import 'package:aerosaur/services/repositories/user_repository.dart';
+import 'package:aerosaur/state/user_store.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -49,7 +50,11 @@ class _SignUpPageState extends State<SignUpPage> {
 
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) {
-      _showSnackbar("Please correct the errors in the form.", Colors.orange);
+      await showAppMessageDialog(
+        context,
+        title: 'Check Your Details',
+        message: 'Please correct the errors in the form before continuing.',
+      );
       return;
     }
 
@@ -59,7 +64,11 @@ class _SignUpPageState extends State<SignUpPage> {
     final confirmPassword = _confirmPasswordController.text;
 
     if (password != confirmPassword) {
-      _showSnackbar("Passwords do not match.", Colors.orange);
+      await showAppMessageDialog(
+        context,
+        title: 'Passwords Do Not Match',
+        message: 'Make sure both password fields are the same.',
+      );
       return;
     }
 
@@ -72,17 +81,16 @@ class _SignUpPageState extends State<SignUpPage> {
         username: username,
       );
 
-      final usersRepo = context.read<UserRepository>();
-
       try {
         await context.read<UserRepository>().getOrCreateProfile(
           username: username,
         );
       } on ApiException catch (e) {
         if (e.statusCode == 409) {
-          _showSnackbar(
-            'Username already taken. Please choose another.',
-            Colors.red,
+          await showAppMessageDialog(
+            context,
+            title: 'Username Unavailable',
+            message: 'Username already taken. Please choose another.',
           );
 
           final currentUser = FirebaseAuth.instance.currentUser;
@@ -283,3 +291,4 @@ class _SignUpPageState extends State<SignUpPage> {
     );
   }
 }
+
