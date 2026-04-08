@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../components/offline_status_banner.dart';
 import '/../../models/device.dart';
 import 'insight_card.dart';
 import 'charts/dual_bar_chart.dart';
@@ -67,6 +68,7 @@ class Insights extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
         child: Column(
           children: [
+            OfflineStatusBanner(device: device),
             InsightCard(
               title: 'Air Quality Index Trend',
               color: cardColor,

@@ -1,10 +1,11 @@
 import 'package:network_info_plus/network_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
+
+import '../location/location_access_service.dart';
 
 class WifiService {
   static Future<String?> getWifiName() async {
-    final status = await Permission.locationWhenInUse.request();
-    if (!status.isGranted) {
+    final issue = await LocationAccessService.getIssue();
+    if (issue != LocationAccessIssue.none) {
       return null;
     }
 

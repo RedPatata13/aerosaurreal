@@ -163,29 +163,45 @@ class AppConfirmationDialog extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.onSurface,
-                        textStyle: const TextStyle(fontWeight: FontWeight.w600),
+                    child: SizedBox(
+                      height: 52,
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.onSurface,
+                          minimumSize: const Size.fromHeight(52),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        child: Text(
+                          cancelLabel,
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                      child: Text(cancelLabel),
                     ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            confirmColor ?? theme.colorScheme.primary,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(44),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    child: SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              confirmColor ?? theme.colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(52),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: Text(
+                          confirmLabel,
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                      child: Text(confirmLabel),
                     ),
                   ),
                 ],

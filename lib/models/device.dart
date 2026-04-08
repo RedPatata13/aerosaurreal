@@ -50,6 +50,7 @@ class Device {
   final String temperature;
   final String humidity;
   final bool harmfulGasDetected;
+  final int? lastReadingUpdatedAtSec;
 
   final List<int> aqiPeak7d;
   final List<int> aqiAverage7d;
@@ -81,6 +82,7 @@ class Device {
     required this.temperature,
     required this.humidity,
     required this.harmfulGasDetected,
+    this.lastReadingUpdatedAtSec,
     required this.aqiPeak7d,
     required this.aqiAverage7d,
     required this.purifierUsageHours7d,
@@ -154,6 +156,7 @@ class Device {
     String? temperature,
     String? humidity,
     bool? harmfulGasDetected,
+    int? lastReadingUpdatedAtSec,
     List<int>? aqiPeak7d,
     List<int>? aqiAverage7d,
     List<double>? purifierUsageHours7d,
@@ -184,6 +187,8 @@ class Device {
       temperature: temperature ?? this.temperature,
       humidity: humidity ?? this.humidity,
       harmfulGasDetected: harmfulGasDetected ?? this.harmfulGasDetected,
+      lastReadingUpdatedAtSec:
+          lastReadingUpdatedAtSec ?? this.lastReadingUpdatedAtSec,
       aqiPeak7d: aqiPeak7d ?? this.aqiPeak7d,
       aqiAverage7d: aqiAverage7d ?? this.aqiAverage7d,
       purifierUsageHours7d: purifierUsageHours7d ?? this.purifierUsageHours7d,
@@ -219,6 +224,7 @@ class Device {
       temperature: '—',
       humidity: '—',
       harmfulGasDetected: false,
+      lastReadingUpdatedAtSec: null,
       aqiPeak7d: const [0, 0, 0, 0, 0, 0, 0],
       aqiAverage7d: const [0, 0, 0, 0, 0, 0, 0],
       purifierUsageHours7d: const [0, 0, 0, 0, 0, 0, 0],
@@ -323,6 +329,7 @@ class Device {
       temperature: fmtNum(r['tempC'], decimals: 1),
       humidity: fmtNum(r['humidity'], decimals: 0),
       harmfulGasDetected: (r['harmfulGasDetected'] as bool?) ?? false,
+      lastReadingUpdatedAtSec: (r['updatedAtSec'] as num?)?.toInt(),
     );
   }
 }
