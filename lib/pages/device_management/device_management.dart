@@ -219,65 +219,14 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
     await _showWifiPasswordDialog(deviceId);
   }
 
-  Future<void> _registerDeviceFromScannedCode(String rawCode) async {
-    final trimmedCode = rawCode.trim();
-    if (trimmedCode.isEmpty || !mounted) {
+  Future<void> _showWifiPasswordDialog(String deviceId) async {
+    final shouldContinue = await showDeviceRegistrationRequirementsDialog(
+      context,
+    );
+    if (!shouldContinue || !mounted) {
       return;
     }
 
-    _setDeviceCode(trimmedCode);
-
-    String? registeredDeviceId;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    try {
-      try {
-        final registered = await _setupService.registerDevice(
-          rawCode: trimmedCode,
-          name: _deviceNameController.text.trim().isEmpty
-              ? null
-              : _deviceNameController.text.trim(),
-        );
-        registeredDeviceId = registered.id;
-        await _loadDevices(silent: _devices.isNotEmpty);
-
-        if (!mounted) return;
-        _clearDeviceCode();
-        _deviceNameController.clear();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Device ${registered.id} registered.')),
-        );
-      } on FormatException catch (e) {
-        if (!mounted) return;
-        await showAppMessageDialog(
-          context,
-          title: 'Invalid Device ID',
-          message: e.message,
-        );
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to add device: $e')));
-      }
-    } finally {
-      if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-    }
-
-    if (registeredDeviceId != null && mounted) {
-      await _provisionAfterRegistration(registeredDeviceId);
-    }
-  }
-
-  Future<void> _showWifiPasswordDialog(String deviceId) async {
     final wifiName = await _setupService.getSuggestedWifiName();
     if (wifiName == null || wifiName.isEmpty) {
       if (!mounted) return;
@@ -367,10 +316,26 @@ class _DeviceManagementPageState extends State<DeviceManagementPage> {
   }
 
   Future<void> _openQrScanner() async {
-    final result = await Navigator.pushNamed(context, AppRoutes.qrScanner);
+    final enteredName = _deviceNameController.text.trim();
+    final result = await Navigator.pushNamed(
+      context,
+      AppRoutes.qrScanner,
+      arguments: enteredName.isEmpty ? null : enteredName,
+    );
 
     if (result is String && result.trim().isNotEmpty) {
-      await _registerDeviceFromScannedCode(result);
+      await _loadDevices(silent: _devices.isNotEmpty);
+
+      if (!mounted) return;
+
+      _clearDeviceCode();
+      _deviceNameController.clear();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Device $result registered.')),
+      );
+
+      await _provisionAfterRegistration(result);
     }
   }
 

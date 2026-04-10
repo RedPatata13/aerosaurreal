@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 Future<void> showAppMessageDialog(
   BuildContext context, {
@@ -38,6 +39,48 @@ Future<bool> showAppConfirmationDialog(
   );
 
   return result ?? false;
+}
+
+Future<bool> showInternetRequiredDialog(BuildContext context) {
+  return showAppConfirmationDialog(
+    context,
+    title: 'Internet Required',
+    message:
+        'Turn on your internet connection to keep using Aerosaur. Wi-Fi or mobile data is needed for sign-in, syncing, and device actions.',
+    cancelLabel: 'Close',
+    confirmLabel: 'Open Settings',
+  );
+}
+
+Future<bool> showDeviceRegistrationRequirementsDialog(
+  BuildContext context,
+) async {
+  BluetoothAdapterState? bluetoothState;
+
+  try {
+    bluetoothState = await FlutterBluePlus.adapterState.first;
+  } catch (_) {
+    bluetoothState = null;
+  }
+
+  if (!context.mounted) {
+    return false;
+  }
+
+  final bluetoothLine = bluetoothState == BluetoothAdapterState.on
+      ? 'Bluetooth is already on. Keep it enabled during setup.'
+      : 'Turn on Bluetooth so Aerosaur can send Wi-Fi credentials to your device.';
+
+  return showAppConfirmationDialog(
+    context,
+    title: 'Before You Register',
+    message:
+        'Before registering your device:\n\n'
+        '• Connect your phone to a 2.4 GHz Wi-Fi network.\n'
+        '• $bluetoothLine',
+    cancelLabel: 'Back',
+    confirmLabel: 'Continue',
+  );
 }
 
 class AppMessageDialog extends StatelessWidget {
@@ -174,33 +217,27 @@ class AppConfirmationDialog extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        child: Text(
-                          cancelLabel,
-                          textAlign: TextAlign.center,
-                        ),
+                        child: Text(cancelLabel, textAlign: TextAlign.center),
                       ),
                     ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: SizedBox(
-                      height: 52,
+                      height: 46,
                       child: ElevatedButton(
                         onPressed: () => Navigator.of(context).pop(true),
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
                               confirmColor ?? theme.colorScheme.primary,
                           foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(52),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          minimumSize: const Size.fromHeight(46),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: Text(
-                          confirmLabel,
-                          textAlign: TextAlign.center,
-                        ),
+                        child: Text(confirmLabel, textAlign: TextAlign.center),
                       ),
                     ),
                   ),

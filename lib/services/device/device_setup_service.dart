@@ -13,11 +13,20 @@ class DeviceSetupService {
     return DeviceCodeParser.normalize(raw);
   }
 
-  Future<Device> registerDevice({
-    required String rawCode,
+  Future<Device> registerDevice({required String rawCode, String? name}) async {
+    final deviceId = normalizeDeviceCode(rawCode);
+    final registered = await _devicesApi.registerDevice(
+      deviceId: deviceId,
+      name: name,
+    );
+    return Device.fromApi(registered);
+  }
+
+  Future<Device> registerQrDevice({
+    required String qrPayload,
     String? name,
   }) async {
-    final deviceId = normalizeDeviceCode(rawCode);
+    final deviceId = DeviceCodeParser.normalizeQrPayload(qrPayload);
     final registered = await _devicesApi.registerDevice(
       deviceId: deviceId,
       name: name,

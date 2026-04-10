@@ -1,4 +1,5 @@
 import 'package:aerosaur/pages/device_management/qr_scanner_screen.dart';
+import 'package:aerosaur/pages/internet_gate.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'firebase_options.dart';
@@ -161,6 +162,9 @@ class MyAppState extends State<MyApp> {
       child: MaterialApp(
         title: 'Aerosaur',
         debugShowCheckedModeBanner: false,
+        builder: (context, child) => InternetGate(
+          child: child ?? const SizedBox.shrink(),
+        ),
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: _themeMode,
@@ -172,8 +176,6 @@ class MyAppState extends State<MyApp> {
           AppRoutes.signup: (_) => const SignUpPage(),
           AppRoutes.login: (_) => const LoginPage(),
           AppRoutes.home: (_) => _withLocationGate(const HomePage()),
-          AppRoutes.qrScanner: (_) =>
-              _withLocationGate(const QrScannerScreen()),
         },
         onGenerateRoute: (settings) {
           switch (settings.name) {
@@ -203,6 +205,15 @@ class MyAppState extends State<MyApp> {
                     devices: args.devices,
                     onDevicesChanged: args.onDevicesChanged,
                   ),
+                ),
+              );
+            case AppRoutes.qrScanner:
+              final deviceName = settings.arguments as String?;
+
+              return _buildHorizontalSlideRoute(
+                settings: settings,
+                child: _withLocationGate(
+                  QrScannerScreen(deviceName: deviceName),
                 ),
               );
             default:

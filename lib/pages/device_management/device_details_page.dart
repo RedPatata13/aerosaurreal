@@ -382,6 +382,13 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
       return;
     }
 
+    final shouldContinue = await showDeviceRegistrationRequirementsDialog(
+      context,
+    );
+    if (!shouldContinue || !mounted) {
+      return;
+    }
+
     final wifiName = await _setupService.getSuggestedWifiName();
     if (wifiName == null || wifiName.isEmpty) {
       if (!mounted) return;

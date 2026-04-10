@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 import '../../components/offline_status_banner.dart';
 import '../../components/tutorial_showcase.dart';
@@ -44,12 +45,14 @@ class Dashboard extends StatelessWidget {
     required GlobalKey? showcaseKey,
     required String title,
     required String description,
+    TooltipPosition? tooltipPosition,
   }) {
     return wrapTutorialShowcase(
       child: child,
       showcaseKey: showcaseKey,
       title: title,
       description: description,
+      tooltipPosition: tooltipPosition,
     );
   }
 
@@ -75,6 +78,7 @@ class Dashboard extends StatelessWidget {
               title: 'Air Quality Summary',
               description:
                   'This card gives a quick view of the current AQI so you can see if the selected space is clean, moderate, or unhealthy.',
+              tooltipPosition: TooltipPosition.bottom,
               child: AqiCard(
                 background: theme.colorScheme.primary,
                 titleStyle: (theme.textTheme.titleMedium ?? const TextStyle())
@@ -109,6 +113,7 @@ class Dashboard extends StatelessWidget {
               title: 'Choose a device',
               description:
                   'Switch between your registered purifiers here. Tapping the power icon quickly turns the selected device on or off.',
+              tooltipPosition: TooltipPosition.bottom,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -150,6 +155,7 @@ class Dashboard extends StatelessWidget {
               title: 'Smart controls',
               description:
                   'Smart Mode helps automate purifier behavior. You can let the app adjust fan speed or turn the unit off automatically when conditions allow.',
+              tooltipPosition: TooltipPosition.top,
               child: SectionCard(
                 cardColor: theme.cardTheme.color ?? theme.colorScheme.surface,
                 borderColor: theme.dividerColor,
@@ -220,6 +226,7 @@ class Dashboard extends StatelessWidget {
               title: 'Manual fan speed',
               description:
                   'Choose Slow, Moderate, or Fast to control airflow yourself. When Smart Mode is on, the highlighted button shows the speed selected by the system.',
+              tooltipPosition: TooltipPosition.top,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

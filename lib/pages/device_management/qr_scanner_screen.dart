@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:provider/provider.dart';
 
-import '../../components/app_dialogs.dart';
+import '../../services/api/api_client.dart';
+import '../../services/api/devices_api.dart';
+import '../../services/device/device_setup_service.dart';
 import '../../services/device/device_code_parser.dart';
 
 class QrScannerScreen extends StatefulWidget {
-  const QrScannerScreen({super.key});
+  const QrScannerScreen({super.key, this.deviceName});
+
+  final String? deviceName;
 
   @override
   State<QrScannerScreen> createState() => _QrScannerScreenState();
@@ -18,9 +23,18 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     detectionSpeed: DetectionSpeed.noDuplicates,
     formats: [BarcodeFormat.qrCode],
   );
+  late final DeviceSetupService _setupService;
   bool _isScanned = false;
   bool _flashOn = false;
   bool _uploadingImage = false;
+  bool _registering = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final apiClient = context.read<ApiClient>();
+    _setupService = DeviceSetupService(DevicesApi(apiClient));
+  }
 
   void _toggleFlash() {
     _controller.toggleTorch();
@@ -51,8 +65,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Iterable<String> _candidateDeviceCodes(Iterable<Barcode> barcodes) sync* {
-    final seen = <String>{};
+  String? _resolveQrPayload(Iterable<Barcode> barcodes) {
+    FormatException? lastError;
 
     for (final barcode in barcodes) {
       final rawCandidates = <String?>[
@@ -67,24 +81,11 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
           continue;
         }
 
-        for (final candidate in DeviceCodeParser.extractCandidates(raw)) {
-          final normalized = candidate.trim();
-          if (normalized.isNotEmpty && seen.add(normalized)) {
-            yield normalized;
-          }
+        try {
+          return DeviceCodeParser.normalizeQrPayload(raw);
+        } on FormatException catch (error) {
+          lastError = error;
         }
-      }
-    }
-  }
-
-  String? _resolveDeviceCode(Iterable<Barcode> barcodes) {
-    FormatException? lastError;
-
-    for (final candidate in _candidateDeviceCodes(barcodes)) {
-      try {
-        return DeviceCodeParser.normalize(candidate);
-      } on FormatException catch (error) {
-        lastError = error;
       }
     }
 
@@ -96,62 +97,129 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
   }
 
   Future<BarcodeCapture?> _analyzeWithFallback(String imagePath) async {
-    final analyzer = MobileScannerController(
-      autoStart: false,
-      detectionSpeed: DetectionSpeed.noDuplicates,
-    );
-
     try {
-      final capture = await analyzer.analyzeImage(imagePath);
-      return capture;
-    } finally {
-      await analyzer.dispose();
+      return await _controller.analyzeImage(imagePath);
+    } catch (_) {
+      final analyzer = MobileScannerController(
+        autoStart: false,
+        detectionSpeed: DetectionSpeed.noDuplicates,
+        formats: [BarcodeFormat.qrCode],
+      );
+
+      try {
+        return await analyzer.analyzeImage(imagePath);
+      } finally {
+        await analyzer.dispose();
+      }
     }
   }
 
-  Future<void> _confirmAndReturnCode({
-    required String code,
-    required String sourceLabel,
-  }) async {
+  Future<void> _registerAndReturn(String qrPayload) async {
     if (!mounted) {
       return;
     }
 
-    final useCode = await showAppConfirmationDialog(
-      context,
-      title: 'Detected Device Code',
-      message:
-          '$sourceLabel found this device code:\n\n$code\n\nUse this code for registration?',
-      cancelLabel: 'Try Again',
-      confirmLabel: 'Use Code',
+    _registering = true;
+
+    try {
+      debugPrint('Registering QR device: $qrPayload');
+
+      final registered = await _setupService.registerQrDevice(
+        qrPayload: qrPayload,
+        name: widget.deviceName,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.pop(context, registered.id);
+      return;
+    } on FormatException catch (e) {
+      _showError(e.message);
+
+      if (!mounted) {
+        return;
+      }
+
+      _isScanned = false;
+      _registering = false;
+      await _controller.start();
+    } catch (e) {
+      _showError('Failed to register device: $e');
+
+      if (!mounted) {
+        return;
+      }
+
+      _isScanned = false;
+      _registering = false;
+      await _controller.start();
+    }
+  }
+
+  Future<void> _processSelectedImage(XFile image) async {
+    debugPrint('Selected image path: ${image.path}');
+
+    final barcodeCapture = await _analyzeWithFallback(image.path);
+    debugPrint(
+      'Analyze result: ${barcodeCapture == null ? "null" : "not null"}',
     );
 
-    if (!mounted) {
+    if (barcodeCapture == null) {
+      if (mounted) {
+        _showError('Unable to analyze this image.');
+      }
       return;
     }
 
-    if (useCode) {
-      Navigator.pop(context, code);
+    debugPrint('Barcode count: ${barcodeCapture.barcodes.length}');
+
+    if (barcodeCapture.barcodes.isEmpty) {
+      if (mounted) {
+        _showError('No QR code found in image.');
+      }
       return;
     }
 
-    _isScanned = false;
-    await _controller.start();
+    final qrPayload = _resolveQrPayload(barcodeCapture.barcodes);
+    debugPrint('Resolved QR payload: $qrPayload');
+
+    if (qrPayload == null || qrPayload.trim().isEmpty) {
+      if (mounted) {
+        _showError('QR detected, but no valid device code was found.');
+      }
+      return;
+    }
+
+    _isScanned = true;
+    await _registerAndReturn(qrPayload);
   }
 
   Future<void> _pickImageAndScan() async {
-    if (_uploadingImage || _isScanned) {
+    if (_uploadingImage || _isScanned || _registering) {
+      debugPrint(
+        'Upload blocked: uploading=$_uploadingImage scanned=$_isScanned registering=$_registering',
+      );
       return;
     }
 
-    final ImagePicker picker = ImagePicker();
+    final picker = ImagePicker();
 
-    setState(() {
-      _uploadingImage = true;
-    });
+    if (mounted) {
+      setState(() {
+        _uploadingImage = true;
+      });
+    }
+
+    XFile? image;
 
     try {
-      final XFile? image = await picker.pickImage(
+      debugPrint('Stopping live scanner before gallery pick...');
+      await _controller.stop();
+
+      debugPrint('Opening gallery...');
+      image = await picker.pickImage(
         source: ImageSource.gallery,
         maxWidth: 1800,
         maxHeight: 1800,
@@ -159,50 +227,50 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         requestFullMetadata: false,
       );
 
+      debugPrint('pickImage finished');
+      debugPrint('mounted after picker: $mounted');
+      debugPrint('image is null: ${image == null}');
+
       if (image == null) {
+        if (mounted) {
+          _showError('No image selected.');
+        }
         return;
       }
 
-      try {
-        final barcodeCapture = await _analyzeWithFallback(image.path);
+      await _processSelectedImage(image);
+    } on FormatException catch (e, st) {
+      debugPrint('FormatException during gallery scan: ${e.message}');
+      debugPrintStack(stackTrace: st);
 
-        if (barcodeCapture != null && barcodeCapture.barcodes.isNotEmpty) {
-          final code = _resolveDeviceCode(barcodeCapture.barcodes);
+      _isScanned = false;
 
-          if (code == null) {
-            if (!mounted) return;
-            _showError(
-              'QR was detected, but no readable device code was found in the image.',
-            );
-            return;
-          }
-
-          _isScanned = true;
-          if (!mounted) return;
-          Navigator.pop(context, code);
-          return;
-        }
-
-        if (!mounted) return;
-        _showError('No QR code found in image.');
-      } on FormatException catch (e) {
-        if (!mounted) return;
+      if (mounted) {
         _showError(e.message);
-      } catch (e) {
-        if (!mounted) return;
+      }
+    } catch (e, st) {
+      debugPrint('Unexpected gallery scan error: $e');
+      debugPrintStack(stackTrace: st);
+
+      _isScanned = false;
+
+      if (mounted) {
         _showError(
           'Unable to analyze this image. Please try another QR photo.',
         );
       }
     } finally {
-      if (mounted) {
+      debugPrint(
+        'finally reached; mounted=$mounted isScanned=$_isScanned registering=$_registering',
+      );
+
+      if (mounted && !_isScanned && !_registering) {
         setState(() {
           _uploadingImage = false;
         });
 
-        if (!_isScanned) {
-          await _controller.start();
-        }
+        debugPrint('Restarting live scanner...');
+        await _controller.start();
       }
     }
   }
@@ -241,26 +309,30 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 MobileScanner(
                   controller: _controller,
                   onDetect: (capture) async {
-                    if (_isScanned) return;
+                    if (_isScanned || _registering) return;
                     try {
-                      final code = _resolveDeviceCode(capture.barcodes);
+                      final qrPayload = _resolveQrPayload(capture.barcodes);
 
-                      if (code == null) {
+                      if (qrPayload == null) {
                         return;
                       }
 
                       _isScanned = true;
                       await _controller.stop();
                       await Future.delayed(const Duration(milliseconds: 300));
-                      await _confirmAndReturnCode(
-                        code: code,
-                        sourceLabel: 'Scanner',
-                      );
+                      await _registerAndReturn(qrPayload);
                     } on FormatException catch (e) {
                       _showError(e.message);
                     }
                   },
                 ),
+                if (_registering)
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
 
                 /// Scanner overlay box
                 Center(
@@ -333,7 +405,9 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _uploadingImage ? null : _pickImageAndScan,
+                      onPressed: _uploadingImage || _registering
+                          ? null
+                          : _pickImageAndScan,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: Colors.white,
@@ -341,7 +415,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: _uploadingImage
+                      child: _uploadingImage || _registering
                           ? const SizedBox(
                               width: 18,
                               height: 18,

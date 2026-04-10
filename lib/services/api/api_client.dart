@@ -1,14 +1,17 @@
 import 'dart:convert';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
 
 class ApiClient {
+  ApiClient({required this.baseUrl, http.Client? httpClient})
+    : _http = httpClient ?? http.Client();
+
   final String baseUrl;
   final http.Client _http;
 
-  ApiClient({required this.baseUrl, http.Client? httpClient})
-    : _http = httpClient ?? http.Client();
+  static const Duration _requestTimeout = Duration(seconds: 8);
 
   Uri _uri(String path) {
     final cleanBase = baseUrl.endsWith('/')
@@ -23,7 +26,9 @@ class ApiClient {
 
     if (auth) {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception('User not logged in');
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
       final token = await user.getIdToken();
       headers['Authorization'] = 'Bearer $token';
     }
@@ -33,7 +38,9 @@ class ApiClient {
 
   Map<String, dynamic> _decodeJsonBody(String body) {
     final trimmed = body.trim();
-    if (trimmed.isEmpty) return <String, dynamic>{};
+    if (trimmed.isEmpty) {
+      return <String, dynamic>{};
+    }
 
     final decoded = jsonDecode(trimmed);
 
@@ -54,7 +61,9 @@ class ApiClient {
   }
 
   Future<http.Response> get(String path, {bool auth = true}) async {
-    return _http.get(_uri(path), headers: await _headers(auth: auth));
+    return _http
+        .get(_uri(path), headers: await _headers(auth: auth))
+        .timeout(_requestTimeout);
   }
 
   Future<http.Response> post(
@@ -62,11 +71,13 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool auth = true,
   }) async {
-    return _http.post(
-      _uri(path),
-      headers: await _headers(auth: auth),
-      body: jsonEncode(body ?? <String, dynamic>{}),
-    );
+    return _http
+        .post(
+          _uri(path),
+          headers: await _headers(auth: auth),
+          body: jsonEncode(body ?? <String, dynamic>{}),
+        )
+        .timeout(_requestTimeout);
   }
 
   Future<http.Response> put(
@@ -74,11 +85,13 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool auth = true,
   }) async {
-    return _http.put(
-      _uri(path),
-      headers: await _headers(auth: auth),
-      body: jsonEncode(body ?? <String, dynamic>{}),
-    );
+    return _http
+        .put(
+          _uri(path),
+          headers: await _headers(auth: auth),
+          body: jsonEncode(body ?? <String, dynamic>{}),
+        )
+        .timeout(_requestTimeout);
   }
 
   Future<http.Response> patch(
@@ -86,11 +99,13 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool auth = true,
   }) async {
-    return _http.patch(
-      _uri(path),
-      headers: await _headers(auth: auth),
-      body: jsonEncode(body ?? <String, dynamic>{}),
-    );
+    return _http
+        .patch(
+          _uri(path),
+          headers: await _headers(auth: auth),
+          body: jsonEncode(body ?? <String, dynamic>{}),
+        )
+        .timeout(_requestTimeout);
   }
 
   Future<http.Response> delete(
@@ -98,15 +113,17 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool auth = true,
   }) async {
-    return _http.delete(
-      _uri(path),
-      headers: await _headers(auth: auth),
-      body: body == null ? null : jsonEncode(body),
-    );
+    return _http
+        .delete(
+          _uri(path),
+          headers: await _headers(auth: auth),
+          body: body == null ? null : jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
   }
 
   Future<Map<String, dynamic>> getJson(String path, {bool auth = true}) async {
-    debugPrint('➡️ GET ${_uri(path)}');
+    debugPrint('GET ${_uri(path)}');
 
     final res = await get(path, auth: auth);
 
