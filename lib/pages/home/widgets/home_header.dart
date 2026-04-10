@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:showcaseview/showcaseview.dart';
 import '../../../components/tutorial_showcase.dart';
 import '../../../platform/system_settings.dart';
 import '../../../state/notifications_store.dart';
@@ -34,6 +35,7 @@ class HomeHeader extends StatelessWidget {
     required String title,
     required String description,
     ShapeBorder? shapeBorder,
+    TooltipPosition? tooltipPosition,
   }) {
     return wrapTutorialShowcase(
       child: child,
@@ -41,6 +43,7 @@ class HomeHeader extends StatelessWidget {
       title: title,
       description: description,
       shapeBorder: shapeBorder,
+      tooltipPosition: tooltipPosition,
     );
   }
 
@@ -115,6 +118,7 @@ class HomeHeader extends StatelessWidget {
               description:
                   'Tap this help button anytime to replay the walkthrough and learn what each part of the app does.',
               shapeBorder: const CircleBorder(),
+              tooltipPosition: TooltipPosition.bottom,
               child: TopIconButton(
                 onPressed: onShowTutorial!,
                 icon: Icons.help_outline_rounded,
@@ -150,6 +154,7 @@ class HomeHeader extends StatelessWidget {
             description:
                 'Use this button to add a purifier to your account or open device management after setup.',
             shapeBorder: const CircleBorder(),
+            tooltipPosition: TooltipPosition.bottom,
             child: TopIconButton(
               onPressed: onRegisterDevice,
               icon: Icons.add,
@@ -165,6 +170,7 @@ class HomeHeader extends StatelessWidget {
             description:
                 'Open alerts, system messages, and device updates. A red dot appears here when something new arrives.',
             shapeBorder: const CircleBorder(),
+            tooltipPosition: TooltipPosition.bottom,
             child: TopIconButton(
               onPressed: () {
                 Navigator.of(context).pushNamed(AppRoutes.notifications);
@@ -185,6 +191,7 @@ class HomeHeader extends StatelessWidget {
             description:
                 'Manage your account, password, connected services, app appearance, and subscription details here.',
             shapeBorder: const CircleBorder(),
+            tooltipPosition: TooltipPosition.bottom,
             child: TopIconButton(
               onPressed: () {
                 Navigator.of(context).pushNamed(AppRoutes.settings);

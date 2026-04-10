@@ -126,7 +126,7 @@ class _WifiPasswordDialogState extends State<WifiPasswordDialog> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'Enter the password for this Wi-Fi network.',
+                    'Enter the password for this 2.4 GHz Wi-Fi network.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: dialogText,

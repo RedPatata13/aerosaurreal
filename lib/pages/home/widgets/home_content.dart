@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:aerosaur/state/device_hub_controller.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:aerosaur/state/user_store.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +38,7 @@ class HomeContent extends StatefulWidget {
 class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
   late final PageController _pageController;
   late final DeviceHubController _controller;
+  StreamSubscription<ConnectivityResult>? _connectivitySubscription;
   final AppTutorialService _tutorialService = AppTutorialService();
   final GlobalKey _tutorialHelpKey = GlobalKey();
   final GlobalKey _registerDeviceKey = GlobalKey();
@@ -67,6 +70,27 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
       controlApi: ControlApi(api),
       analyticsApi: AnalyticsApi(api),
     );
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      status,
+    ) async {
+      if (status == ConnectivityResult.none || !mounted) {
+        return;
+      }
+
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        return;
+      }
+
+      try {
+        await context.read<UserStore>().loadOrCreate();
+      } catch (_) {}
+
+      if (!mounted) return;
+      await _refreshPremiumStatus(userId: userId);
+      if (!mounted) return;
+      await _controller.loadDevices(silent: true);
+    });
 
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -78,11 +102,14 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      await context.read<UserStore>().loadOrCreate();
-      await _refreshPremiumStatus(
-        userId: currentUser.uid,
-        showLoader: true,
-      );
+      try {
+        await context.read<UserStore>().loadOrCreate();
+      } catch (_) {}
+
+      if (!mounted) return;
+      await _refreshPremiumStatus(userId: currentUser.uid, showLoader: true);
+
+      if (!mounted) return;
       await _controller.initialize();
     });
   }
@@ -218,6 +245,7 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _connectivitySubscription?.cancel();
     _controller.dispose();
     _pageController.dispose();
     super.dispose();
@@ -271,37 +299,9 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
           );
         }
 
-        if (_controller.devicesError != null) {
-          return Scaffold(
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Failed to load devices.',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _controller.devicesError!,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 42,
-                      child: OutlinedButton(
-                        onPressed: () => _controller.loadDevices(),
-                        child: const Text('Retry'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+        if (_controller.devices.isEmpty && _controller.devicesError != null) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 
@@ -418,7 +418,8 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                               ).pushNamed(AppRoutes.premium);
 
                               if (!mounted) return;
-                              final userId = FirebaseAuth.instance.currentUser?.uid;
+                              final userId =
+                                  FirebaseAuth.instance.currentUser?.uid;
                               if (userId == null) return;
                               await _refreshPremiumStatus(userId: userId);
                             },
@@ -450,7 +451,8 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                               ).pushNamed(AppRoutes.premium);
 
                               if (!mounted) return;
-                              final userId = FirebaseAuth.instance.currentUser?.uid;
+                              final userId =
+                                  FirebaseAuth.instance.currentUser?.uid;
                               if (userId == null) return;
                               await _refreshPremiumStatus(userId: userId);
                             },
@@ -494,6 +496,7 @@ class _HomeContentState extends State<HomeContent> with WidgetsBindingObserver {
                 title: 'Navigate between pages',
                 description:
                     'Use these tabs to move between Dashboard, Monitoring, and Insights. Monitoring shows live readings, while Insights helps you review trends.',
+                tooltipPosition: TooltipPosition.top,
                 shapeBorder: const RoundedRectangleBorder(
                   borderRadius: BorderRadius.all(Radius.circular(24)),
                 ),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../components/app_dialogs.dart';
 import '../../models/app_notification.dart';
 import '../../models/device.dart';
 import '../../models/notification_preferences.dart';
@@ -175,6 +176,20 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Future<void> _clearAll() async {
     if (_busy || _items.isEmpty) return;
 
+    final shouldDelete = await showAppConfirmationDialog(
+      context,
+      title: 'Delete all notifications?',
+      message:
+          'This will permanently remove your notification history from the app.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Delete all',
+      confirmColor: const Color(0xFFFF4B3A),
+    );
+
+    if (!shouldDelete || !mounted) {
+      return;
+    }
+
     setState(() {
       _busy = true;
       _items = const [];
@@ -245,12 +260,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
             const SizedBox(height: 10),
             Expanded(
-              child: RefreshIndicator(
-                color: theme.colorScheme.primary,
-                onRefresh: _loadNotifications,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
                   children: [
                     NotificationToggleSection(
                       items: [
@@ -282,8 +294,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    _buildHistorySection(),
+                    if (_preferences.enabled) ...[
+                      const SizedBox(height: 12),
+                      Expanded(child: _buildHistorySection()),
+                    ],
                   ],
                 ),
               ),
@@ -320,54 +334,96 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
               _ActionButton(
-                label: 'Mark all as read',
+                label: 'Mark all read',
                 color: theme.colorScheme.primary,
                 onPressed: _items.isEmpty ? null : _markAllAsRead,
               ),
-              const SizedBox(width: 12),
               _ActionButton(
-                label: 'Clear All',
+                label: 'Delete all',
                 color: const Color(0xFFFF4B3A),
                 onPressed: _items.isEmpty ? null : _clearAll,
               ),
             ],
           ),
           const SizedBox(height: 14),
-          if (_loading)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: CircularProgressIndicator(
-                  color: theme.colorScheme.primary,
-                ),
+          Expanded(child: _buildHistoryBody(theme)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHistoryBody(ThemeData theme) {
+    final edgeInsets = const EdgeInsets.only(bottom: 4);
+
+    if (_loading) {
+      return RefreshIndicator(
+        color: theme.colorScheme.primary,
+        onRefresh: _loadNotifications,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: edgeInsets,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: CircularProgressIndicator(color: theme.colorScheme.primary),
               ),
-            )
-          else if (_error != null)
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return RefreshIndicator(
+        color: theme.colorScheme.primary,
+        onRefresh: _loadNotifications,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: edgeInsets,
+          children: [
             _HistoryMessage(
               message: _error!,
               actionLabel: 'Retry',
               onPressed: _loadNotifications,
-            )
-          else if (_items.isEmpty)
-            const _HistoryMessage(message: 'No notifications yet')
-          else
-            Column(
-              children: _items
-                  .map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: NotificationCard(
-                        item: item,
-                        onTap: () => _markItemAsRead(item),
-                      ),
-                    ),
-                  )
-                  .toList(growable: false),
             ),
-        ],
+          ],
+        ),
+      );
+    }
+
+    if (_items.isEmpty) {
+      return RefreshIndicator(
+        color: theme.colorScheme.primary,
+        onRefresh: _loadNotifications,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: edgeInsets,
+          children: const [_HistoryMessage(message: 'No notifications yet')],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: theme.colorScheme.primary,
+      onRefresh: _loadNotifications,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: edgeInsets,
+        itemCount: _items.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final item = _items[index];
+          return NotificationCard(
+            item: item,
+            onTap: () => _markItemAsRead(item),
+          );
+        },
       ),
     );
   }
@@ -393,12 +449,14 @@ class _ActionButton extends StatelessWidget {
         disabledBackgroundColor: color.withValues(alpha: 0.45),
         foregroundColor: Colors.white,
         elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        minimumSize: const Size(0, 34),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       ),
     );
   }

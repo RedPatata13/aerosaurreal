@@ -6,12 +6,13 @@ class StartupRouteResolver {
   StartupRouteResolver(this._apiClient);
 
   final ApiClient _apiClient;
+  static const Duration _resolveTimeout = Duration(seconds: 8);
 
   Future<String> resolve(String userId) async {
     try {
-      final status = await PremiumRepository(_apiClient).getPremiumStatus(
-        userId,
-      );
+      final status = await PremiumRepository(
+        _apiClient,
+      ).getPremiumStatus(userId).timeout(_resolveTimeout);
       final isPremium = status['isPremium'] == true;
 
       return isPremium ? AppRoutes.home : AppRoutes.premium;

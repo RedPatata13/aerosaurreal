@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:showcaseview/showcaseview.dart';
 import '../../../components/tutorial_showcase.dart';
 
 class NoDeviceContent extends StatelessWidget {
@@ -99,6 +100,7 @@ class NoDeviceContent extends StatelessWidget {
                             title: 'Start by adding a device',
                             description:
                                 'Register your purifier here so the app can show live air quality, controls, alerts, and analytics.',
+                            tooltipPosition: TooltipPosition.top,
                           ),
                   ),
                   const SizedBox(width: 10),
