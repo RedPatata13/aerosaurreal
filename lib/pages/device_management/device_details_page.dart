@@ -8,7 +8,6 @@ import '../../services/api/api_client.dart';
 import '../../services/api/devices_api.dart';
 import '../../services/api/readings_api.dart';
 import '../../services/device/device_setup_service.dart';
-import '../../services/location/location_access_service.dart';
 
 class DeviceDetailsPage extends StatefulWidget {
   const DeviceDetailsPage({super.key, required this.device});
@@ -390,59 +389,49 @@ class _DeviceDetailsPageState extends State<DeviceDetailsPage> {
     }
 
     final wifiName = await _setupService.getSuggestedWifiName();
-    if (wifiName == null || wifiName.isEmpty) {
-      if (!mounted) return;
-      final locationIssue = await LocationAccessService.getIssue();
-      if (locationIssue != LocationAccessIssue.none) {
-        final shouldOpen = await showAppConfirmationDialog(
-          context,
-          title: locationIssue == LocationAccessIssue.serviceDisabled
-              ? 'Turn On Location'
-              : 'Location Permission Needed',
-          message: locationIssue == LocationAccessIssue.serviceDisabled
-              ? 'Your phone location is turned off. Enable it so Aerosaur can detect your Wi-Fi and continue provisioning.'
-              : 'Allow location access so Aerosaur can detect your Wi-Fi and continue provisioning.',
-          cancelLabel: 'Close',
-          confirmLabel: locationIssue == LocationAccessIssue.serviceDisabled
-              ? 'Open Location'
-              : 'Open Settings',
-        );
-        if (shouldOpen) {
-          await LocationAccessService.openResolution(locationIssue);
-        }
-        return;
-      }
-      await showAppMessageDialog(
-        context,
-        title: 'Wi-Fi Required',
-        message: 'Connect your phone to Wi-Fi first.',
-      );
-      return;
-    }
 
     final result = await showDialog<WifiPasswordDialogResult>(
       context: context,
       builder: (_) => WifiPasswordDialog(
         title: 'Provision Wi-Fi',
-        wifiName: wifiName,
+        initialSsid: wifiName,
         actionLabel: 'Provision',
       ),
     );
 
-    if (result == null || result.password.isEmpty) return;
+    if (result == null) return;
+
+    final ssid = result.ssid.trim();
+    if (ssid.isEmpty) {
+      await showAppMessageDialog(
+        context,
+        title: 'SSID Required',
+        message: 'Enter the Wi-Fi name you want your device to use.',
+      );
+      return;
+    }
+
+    if (result.password.isEmpty) {
+      await showAppMessageDialog(
+        context,
+        title: 'Password Required',
+        message: 'Wi-Fi password is required.',
+      );
+      return;
+    }
 
     setState(() => _provisioningWifi = true);
 
     try {
       await _setupService.provisionWifi(
         rawCode: _device.id,
-        ssid: wifiName,
+        ssid: ssid,
         pass: result.password,
       );
 
       if (!mounted) return;
       setState(() {
-        _device = _device.copyWith(wifiName: wifiName, isWifiConnected: true);
+        _device = _device.copyWith(wifiName: ssid, isWifiConnected: true);
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
