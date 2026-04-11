@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
 
 class WifiPasswordDialogResult {
+  final String ssid;
   final String password;
 
-  const WifiPasswordDialogResult({required this.password});
+  const WifiPasswordDialogResult({required this.ssid, required this.password});
 }
 
 class WifiPasswordDialog extends StatefulWidget {
   final String title;
-  final String wifiName;
   final String actionLabel;
+  final String? initialSsid;
   final String? initialPassword;
 
   const WifiPasswordDialog({
     super.key,
     required this.title,
-    required this.wifiName,
     required this.actionLabel,
+    this.initialSsid,
     this.initialPassword,
   });
 
@@ -25,15 +26,22 @@ class WifiPasswordDialog extends StatefulWidget {
 }
 
 class _WifiPasswordDialogState extends State<WifiPasswordDialog> {
+  late final TextEditingController _ssidController;
+  late final FocusNode _ssidFocusNode;
   late final TextEditingController _passwordController;
   late final FocusNode _passwordFocusNode;
   bool _obscurePassword = true;
 
-  bool get _isButtonEnabled => _passwordController.text.isNotEmpty;
+  bool get _isButtonEnabled =>
+      _ssidController.text.trim().isNotEmpty &&
+      _passwordController.text.isNotEmpty;
 
   @override
   void initState() {
     super.initState();
+    _ssidController = TextEditingController(text: widget.initialSsid ?? '');
+    _ssidController.addListener(_updateState);
+    _ssidFocusNode = FocusNode();
     _passwordController = TextEditingController(
       text: widget.initialPassword ?? '',
     );
@@ -47,20 +55,27 @@ class _WifiPasswordDialogState extends State<WifiPasswordDialog> {
 
   @override
   void dispose() {
+    _ssidController.removeListener(_updateState);
     _passwordController.removeListener(_updateState);
+    _ssidFocusNode.dispose();
     _passwordFocusNode.dispose();
+    _ssidController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   void _close(bool shouldSubmit) {
+    _ssidFocusNode.unfocus();
     _passwordFocusNode.unfocus();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Navigator.of(context).pop(
         shouldSubmit
-            ? WifiPasswordDialogResult(password: _passwordController.text)
+            ? WifiPasswordDialogResult(
+                ssid: _ssidController.text.trim(),
+                password: _passwordController.text,
+              )
             : null,
       );
     });
@@ -82,7 +97,7 @@ class _WifiPasswordDialogState extends State<WifiPasswordDialog> {
         constraints: const BoxConstraints(maxWidth: 360),
         child: SizedBox(
           width: 340,
-          height: 390,
+          height: 450,
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: dialogBg,
@@ -117,28 +132,40 @@ class _WifiPasswordDialogState extends State<WifiPasswordDialog> {
                   ),
                   const SizedBox(height: 22),
                   Text(
-                    widget.wifiName,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.headlineMedium?.color,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Enter the password for this 2.4 GHz Wi-Fi network.',
+                    'Choose the 2.4 GHz Wi-Fi network your device should join.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: dialogText,
                       height: 1.4,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: _ssidController,
+                    focusNode: _ssidFocusNode,
+                    autofocus: _ssidController.text.trim().isEmpty,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => _passwordFocusNode.requestFocus(),
+                    decoration: const InputDecoration(
+                      hintText: 'Wi-Fi SSID',
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   TextField(
                     controller: _passwordController,
                     focusNode: _passwordFocusNode,
                     obscureText: _obscurePassword,
-                    autofocus: false,
+                    autofocus: _ssidController.text.trim().isNotEmpty,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) {
+                      if (_isButtonEnabled) {
+                        _close(true);
+                      }
+                    },
                     decoration: InputDecoration(
                       hintText: 'Wi-Fi Password',
                       contentPadding: const EdgeInsets.symmetric(
